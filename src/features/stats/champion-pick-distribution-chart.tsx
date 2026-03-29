@@ -1,4 +1,4 @@
-import type { ChampionBanStat } from "@/types";
+import type { ChampionPickStat } from "@/types";
 import {
   PieChart,
   Pie,
@@ -11,10 +11,9 @@ import type { PieLabelRenderProps } from "recharts";
 import { chartTheme } from "./chart-theme.js";
 
 interface Props {
-  data: ChampionBanStat[];
+  data: ChampionPickStat[];
 }
 
-// Distinct palette for pie slices — cycles if more champions than colours
 const PIE_COLORS = [
   "#4472c4",
   "#ed7d31",
@@ -38,25 +37,26 @@ const PIE_COLORS = [
   "#2f75b6",
 ];
 
-export function ChampionBanDistributionChart({ data }: Props) {
-  const filtered = data.filter((d) => d.ban_count > 0);
-  // Show top 10, group the rest as "Others"
-  const sorted = [...filtered].sort((a, b) => b.ban_count - a.ban_count);
+export function ChampionPickDistributionChart({ data }: Props) {
+  // Show top 10 by pick count, group the rest as "Others"
+  const sorted = [...data].sort((a, b) => b.pick_count - a.pick_count);
   const top = sorted.slice(0, 10);
-  const othersCount = sorted.slice(10).reduce((sum, d) => sum + d.ban_count, 0);
+  const othersCount = sorted
+    .slice(10)
+    .reduce((sum, d) => sum + d.pick_count, 0);
   const chartData =
     othersCount > 0
-      ? [...top, { champion: "Others", ban_count: othersCount, ban_rate: 0 }]
+      ? [...top, { champion: "Others", pick_count: othersCount, pick_rate: 0 }]
       : top;
 
   return (
     <>
-      <h2 style={chartTheme.title}>Most Banned Champions</h2>
+      <h2 style={chartTheme.title}>Champion Pick Distribution</h2>
       <ResponsiveContainer width="100%" height={340}>
         <PieChart>
           <Pie
             data={chartData}
-            dataKey="ban_count"
+            dataKey="pick_count"
             nameKey="champion"
             cx="40%"
             cy="50%"

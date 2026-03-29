@@ -89,10 +89,45 @@ export interface ChampionKdaStat {
 export interface ChampionPickStat {
   champion: string;
   pick_count: number;
+  pick_rate: number;
 }
 
 export interface ChampionBanStat {
   champion: string;
   ban_count: number;
   ban_rate: number;
+}
+
+// Combined per-champion stats (win rate + KDA) used by charts and tables
+export interface ChampionStatSummary {
+  champion: string;
+  games_played: number;
+  wins: number;
+  losses: number;
+  win_pct: number;
+  avg_kills: number;
+  avg_deaths: number;
+  avg_assists: number;
+  kda: number;
+}
+
+// Player stats extended with KDA, used by scatter plot and performance table
+export interface PlayerStatSummary {
+  username: string;
+  games_played: number;
+  wins: number;
+  losses: number;
+  win_pct: number;
+  avg_kills: number;
+  avg_deaths: number;
+  avg_assists: number;
+  kda: number;
+}
+
+// Average K/D/A aggregated by role, used by the radar chart
+export interface RolePerformanceStat {
+  role: string;
+  avg_kills: number;
+  avg_deaths: number;
+  avg_assists: number;
 }

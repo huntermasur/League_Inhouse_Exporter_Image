@@ -9,6 +9,9 @@ import type {
   ChampionKdaStat,
   ChampionPickStat,
   ChampionBanStat,
+  ChampionStatSummary,
+  PlayerStatSummary,
+  RolePerformanceStat,
 } from "../types.js";
 
 // ── Games ────────────────────────────────────────────────────────────────────
@@ -136,16 +139,24 @@ export function getChampionKdaStats(): ChampionKdaStat[] {
 }
 
 export function getChampionPickStats(): ChampionPickStat[] {
+  const totalGames = (
+    db.prepare("SELECT COUNT(*) AS n FROM games").get() as { n: number }
+  ).n;
+  if (totalGames === 0) return [];
+
   return db
     .prepare(
       `
-    SELECT champion, COUNT(*) AS pick_count
+    SELECT
+      champion,
+      COUNT(*) AS pick_count,
+      ROUND(CAST(COUNT(*) AS REAL) / ?, 3) AS pick_rate
     FROM players
     GROUP BY champion
-    ORDER BY champion
+    ORDER BY pick_count DESC
   `,
     )
-    .all() as ChampionPickStat[];
+    .all(totalGames) as ChampionPickStat[];
 }
 
 export function getChampionBanStats(): ChampionBanStat[] {
@@ -168,4 +179,88 @@ export function getChampionBanStats(): ChampionBanStat[] {
   `,
     )
     .all(totalGames) as ChampionBanStat[];
+}
+
+// Combined per-champion stats: win rate + KDA in one query
+export function getChampionStatSummaries(): ChampionStatSummary[] {
+  return db
+    .prepare(
+      `
+    SELECT
+      p.champion,
+      COUNT(*)                                                          AS games_played,
+      SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END)         AS wins,
+      COUNT(*) - SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END) AS losses,
+      ROUND(
+        100.0 * SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END) / COUNT(*),
+        1
+      )                                                                  AS win_pct,
+      ROUND(AVG(p.kills),   1)                                          AS avg_kills,
+      ROUND(AVG(p.deaths),  1)                                          AS avg_deaths,
+      ROUND(AVG(p.assists), 1)                                          AS avg_assists,
+      ROUND(
+        (AVG(p.kills) + AVG(p.assists)) / MAX(AVG(p.deaths), 1.0),
+        2
+      )                                                                  AS kda
+    FROM players p
+    JOIN games g ON g.id = p.game_id
+    GROUP BY p.champion
+    ORDER BY games_played DESC
+  `,
+    )
+    .all() as ChampionStatSummary[];
+}
+
+// Player stats extended with KDA for scatter plot and table
+export function getPlayerStatSummaries(): PlayerStatSummary[] {
+  return db
+    .prepare(
+      `
+    SELECT
+      p.username,
+      COUNT(*)                                                          AS games_played,
+      SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END)         AS wins,
+      COUNT(*) - SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END) AS losses,
+      ROUND(
+        100.0 * SUM(CASE WHEN g.winning_team = p.team THEN 1 ELSE 0 END) / COUNT(*),
+        1
+      )                                                                  AS win_pct,
+      ROUND(AVG(p.kills),   1)                                          AS avg_kills,
+      ROUND(AVG(p.deaths),  1)                                          AS avg_deaths,
+      ROUND(AVG(p.assists), 1)                                          AS avg_assists,
+      ROUND(
+        (AVG(p.kills) + AVG(p.assists)) / MAX(AVG(p.deaths), 1.0),
+        2
+      )                                                                  AS kda
+    FROM players p
+    JOIN games g ON g.id = p.game_id
+    GROUP BY p.username
+    ORDER BY games_played DESC
+  `,
+    )
+    .all() as PlayerStatSummary[];
+}
+
+// Average K/D/A per role for the radar chart
+export function getRolePerformanceStats(): RolePerformanceStat[] {
+  return db
+    .prepare(
+      `
+    SELECT
+      CASE p.position
+        WHEN 1 THEN 'Top'
+        WHEN 2 THEN 'Jungle'
+        WHEN 3 THEN 'Mid'
+        WHEN 4 THEN 'Bot'
+        WHEN 5 THEN 'Support'
+      END                       AS role,
+      ROUND(AVG(p.kills),   2)  AS avg_kills,
+      ROUND(AVG(p.deaths),  2)  AS avg_deaths,
+      ROUND(AVG(p.assists), 2)  AS avg_assists
+    FROM players p
+    GROUP BY p.position
+    ORDER BY p.position
+  `,
+    )
+    .all() as RolePerformanceStat[];
 }

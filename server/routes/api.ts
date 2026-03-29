@@ -14,6 +14,9 @@ import {
   getChampionKdaStats,
   getChampionPickStats,
   getChampionBanStats,
+  getChampionStatSummaries,
+  getPlayerStatSummaries,
+  getRolePerformanceStats,
 } from "../services/gameRepository.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -162,6 +165,21 @@ router.get("/stats/champion-picks", (_req, res) => {
 // GET /api/stats/champion-bans
 router.get("/stats/champion-bans", (_req, res) => {
   res.json(getChampionBanStats());
+});
+
+// GET /api/stats/champion-stats  — combined win rate + KDA per champion
+router.get("/stats/champion-stats", (_req, res) => {
+  res.json(getChampionStatSummaries());
+});
+
+// GET /api/stats/player-stats-full  — player win rate + KDA combined
+router.get("/stats/player-stats-full", (_req, res) => {
+  res.json(getPlayerStatSummaries());
+});
+
+// GET /api/stats/role-performance
+router.get("/stats/role-performance", (_req, res) => {
+  res.json(getRolePerformanceStats());
 });
 
 export default router;

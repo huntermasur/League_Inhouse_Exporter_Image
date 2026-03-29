@@ -1,9 +1,10 @@
-import type { ChampionKdaStat } from "@/types";
+import type { PlayerStatSummary } from "@/types";
 import {
   ScatterChart,
   Scatter,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
@@ -11,57 +12,11 @@ import {
 import { chartTheme } from "./chart-theme.js";
 
 interface Props {
-  data: ChampionKdaStat[];
-}
-
-// Icon size in px for each champion dot
-const ICON_SIZE = 30;
-
-interface DotProps {
-  cx?: number;
-  cy?: number;
-  payload?: ChampionKdaStat;
-}
-
-/** Custom scatter dot that renders a circular champion portrait. */
-function ChampionDot({ cx = 0, cy = 0, payload }: DotProps) {
-  if (!payload) return null;
-  const champion = payload.champion;
-  const clipId = `kda-clip-${champion}`;
-  const r = ICON_SIZE / 2;
-
-  return (
-    <g>
-      <defs>
-        <clipPath id={clipId}>
-          <circle cx={cx} cy={cy} r={r} />
-        </clipPath>
-      </defs>
-      {/* Subtle border ring */}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={r + 1.5}
-        fill="none"
-        stroke={chartTheme.blue}
-        strokeWidth={1.5}
-        opacity={0.7}
-      />
-      {/* Champion portrait */}
-      <image
-        href={`/champion-images/${champion}.png`}
-        x={cx - r}
-        y={cy - r}
-        width={ICON_SIZE}
-        height={ICON_SIZE}
-        clipPath={`url(#${clipId})`}
-      />
-    </g>
-  );
+  data: PlayerStatSummary[];
 }
 
 interface TooltipPayloadEntry {
-  payload: ChampionKdaStat;
+  payload: PlayerStatSummary;
 }
 
 interface CustomTooltipProps {
@@ -69,14 +24,14 @@ interface CustomTooltipProps {
   payload?: TooltipPayloadEntry[];
 }
 
-function KdaTooltip({ active, payload }: CustomTooltipProps) {
+function PlayerKdaTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
     <div
       style={{ ...chartTheme.tooltip, padding: "8px 12px", lineHeight: 1.6 }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.champion}</div>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.username}</div>
       <div>
         Avg Kills: <strong>{d.avg_kills}</strong>
       </div>
@@ -86,14 +41,23 @@ function KdaTooltip({ active, payload }: CustomTooltipProps) {
       <div>
         Avg Assists: <strong>{d.avg_assists}</strong>
       </div>
+      <div>
+        KDA: <strong>{d.kda}</strong>
+      </div>
     </div>
   );
 }
 
-export function ChampionKdaChart({ data }: Props) {
+export function PlayerKdaChart({ data }: Props) {
+  // Map kda ratio to a bubble size range (min 30, max 400 area)
+  const scatterData = data.map((d) => ({
+    ...d,
+    bubble_size: Math.round(d.kda * d.kda * 10),
+  }));
+
   return (
     <>
-      <h2 style={chartTheme.title}>Champion KDA Analysis</h2>
+      <h2 style={chartTheme.title}>Player KDA Analysis</h2>
       <ResponsiveContainer width="100%" height={340}>
         <ScatterChart margin={{ top: 16, right: 24, bottom: 40, left: 8 }}>
           <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
@@ -127,19 +91,21 @@ export function ChampionKdaChart({ data }: Props) {
               fontSize: 11,
             }}
           />
+          <ZAxis type="number" dataKey="bubble_size" range={[30, 400]} />
           <Tooltip
-            content={<KdaTooltip />}
+            content={<PlayerKdaTooltip />}
             cursor={{ strokeDasharray: "3 3" }}
           />
           <Scatter
-            data={data}
-            shape={<ChampionDot />}
+            data={scatterData}
+            fill={chartTheme.blue}
+            fillOpacity={0.7}
             isAnimationActive={false}
           />
         </ScatterChart>
       </ResponsiveContainer>
       <p style={{ color: "#5a6478", fontSize: 11, marginTop: 4 }}>
-        Each icon represents a champion. Lower deaths and higher kills = better
+        Bubble size represents KDA ratio. Lower deaths and higher kills = better
         performance.
       </p>
     </>

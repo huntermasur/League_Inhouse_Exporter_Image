@@ -1,4 +1,4 @@
-import type { PlayerGameStat } from "@/types";
+import type { ChampionStatSummary } from "@/types";
 import {
   BarChart,
   Bar,
@@ -13,15 +13,15 @@ import {
 import { chartTheme } from "./chart-theme.js";
 
 interface Props {
-  data: PlayerGameStat[];
+  data: ChampionStatSummary[];
 }
 
-export function WinPercentChart({ data }: Props) {
+export function ChampionWinRateChart({ data }: Props) {
   const sorted = [...data].sort((a, b) => b.win_pct - a.win_pct);
 
   return (
     <>
-      <h2 style={chartTheme.title}>Player Win Rates</h2>
+      <h2 style={chartTheme.title}>Champion Win Rates</h2>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart
           data={sorted}
@@ -33,7 +33,7 @@ export function WinPercentChart({ data }: Props) {
             vertical={false}
           />
           <XAxis
-            dataKey="username"
+            dataKey="champion"
             tick={{ ...chartTheme.tick, fontSize: 10 }}
             angle={-45}
             textAnchor="end"
@@ -74,7 +74,7 @@ export function WinPercentChart({ data }: Props) {
           <Bar dataKey="win_pct" name="Win Rate" radius={[3, 3, 0, 0]}>
             {sorted.map((entry) => (
               <Cell
-                key={entry.username}
+                key={entry.champion}
                 fill={entry.win_pct >= 50 ? chartTheme.blue : chartTheme.gold}
               />
             ))}

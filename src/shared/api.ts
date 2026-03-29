@@ -5,6 +5,9 @@ import type {
   ChampionKdaStat,
   ChampionPickStat,
   ChampionBanStat,
+  ChampionStatSummary,
+  PlayerStatSummary,
+  RolePerformanceStat,
   ParsedGame,
 } from "@/types";
 
@@ -76,4 +79,16 @@ export function fetchChampionPicks(): Promise<ChampionPickStat[]> {
 
 export function fetchChampionBans(): Promise<ChampionBanStat[]> {
   return request<ChampionBanStat[]>("/api/stats/champion-bans");
+}
+
+export function fetchChampionStats(): Promise<ChampionStatSummary[]> {
+  return request<ChampionStatSummary[]>("/api/stats/champion-stats");
+}
+
+export function fetchPlayerStatsFull(): Promise<PlayerStatSummary[]> {
+  return request<PlayerStatSummary[]>("/api/stats/player-stats-full");
+}
+
+export function fetchRolePerformance(): Promise<RolePerformanceStat[]> {
+  return request<RolePerformanceStat[]>("/api/stats/role-performance");
 }

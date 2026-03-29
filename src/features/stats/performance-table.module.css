@@ -1,0 +1,75 @@
+.title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e0e6f0;
+  margin-bottom: 1rem;
+}
+
+.wrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+
+.table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: #5a6478;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #1e2030;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #161826;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: rgba(68, 114, 196, 0.08);
+}
+
+.nameCell {
+  font-weight: 600;
+  color: #e0e6f0;
+}
+
+.win {
+  color: #4472c4;
+  font-weight: 600;
+}
+
+.loss {
+  color: #ed7d31;
+  font-weight: 600;
+}
+
+.winRate {
+  color: #4472c4;
+  font-weight: 600;
+}
+
+.lossRate {
+  color: #ed7d31;
+  font-weight: 600;
+}
+
+.kda {
+  color: #8b9bb4;
+  font-variant-numeric: tabular-nums;
+}
+
+.kdaRatio {
+  font-weight: 700;
+  color: #c89b3c;
+  font-variant-numeric: tabular-nums;
+}
