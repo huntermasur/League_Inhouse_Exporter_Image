@@ -287,9 +287,12 @@ def extract_bans(
         team = team_idx + 1
 
         # Region below the "BANS" header containing the icon grid.
+        # The grid is 3-over-2 (3 icons on top, 2 on bottom).  Use 0.17 of
+        # image height to ensure the full bottom row is captured — 0.12 was
+        # cutting the bottom icons short, producing truncated crops.
         region_top = section["y"] + section["h"] + 2
         region_left = max(0, section["x"] - 15)
-        region_bottom = min(h, region_top + int(h * 0.12))
+        region_bottom = min(h, region_top + int(h * 0.17))
         region_right = min(w, region_left + int(w * 0.25))
 
         ban_region = full_img[region_top:region_bottom, region_left:region_right]

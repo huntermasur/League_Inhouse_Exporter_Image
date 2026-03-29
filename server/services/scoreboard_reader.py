@@ -40,13 +40,15 @@ ICON_RING_THICKNESS = 4
 ITEM_SLOTS = 7
 
 # Column layout as fractions of the scoreboard width.
+# These fractions are calibrated for the scoreboard player table
+# AFTER the BANS + OBJECTIVES panel has been cropped off the right side.
 # Adjust these if your screenshots have a different aspect ratio.
 LAYOUT: dict[str, float] = {
     "name_x_end":    0.34,   # player name ends here
     "items_x_start": 0.34,   # item icons start here
-    "items_x_end":   0.68,   # item icons end here
-    "kda_x_start":   0.68,   # K/D/A column starts here
-    "kda_x_end":     0.83,   # K/D/A column ends here
+    "items_x_end":   0.64,   # item icons end here
+    "kda_x_start":   0.65,   # K/D/A column starts here (past trinket icon)
+    "kda_x_end":     0.82,   # K/D/A column ends here
 }
 
 # Parameter grid for the Hough circle brute-force search
@@ -234,36 +236,56 @@ def find_scoreboard_region(img: np.ndarray, padding: int = 5) -> np.ndarray:
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     ocr_data = pytesseract.image_to_data(img_rgb, output_type=pytesseract.Output.DICT)
 
+    h_full, w_full = img.shape[:2]
     scoreboard_y: Optional[int] = None
+    bans_x: Optional[int] = None
+
     for i, text in enumerate(ocr_data["text"]):
-        if "scoreboard" in text.lower():
+        clean = text.strip().lower()
+        if not clean:
+            continue
+        if "scoreboard" in clean and scoreboard_y is None:
             y = ocr_data["top"][i]
             h_text = ocr_data["height"][i]
             scoreboard_y = y + h_text + padding
-            break
+        # Detect the "BANS" header in the right half of the image to
+        # determine where the BANS + OBJECTIVES panel starts.  Both the
+        # scoreboard and the BANS panel share a dark background, so
+        # brightness-based edge detection alone can't separate them.
+        if "bans" in clean and ocr_data["left"][i] > w_full * 0.5:
+            candidate_x = ocr_data["left"][i]
+            if bans_x is None or candidate_x < bans_x:
+                bans_x = candidate_x
 
     if scoreboard_y is None:
         raise ValueError("Could not locate 'Scoreboard' text in the image.")
 
     cropped = img[scoreboard_y:, :]
 
-    # Detect the right boundary of the scoreboard area to exclude side
-    # panels (e.g. the Social/Friends list).  The scoreboard sits on a
-    # darker background; we look for a vertical brightness edge in the
-    # upper portion of the cropped region.
-    probe_h = min(60, cropped.shape[0])
-    probe_strip = cv2.cvtColor(cropped[:probe_h, :], cv2.COLOR_BGR2GRAY)
-    col_brightness = np.mean(probe_strip, axis=0)
+    # Determine the right boundary of the scoreboard player table.
+    # The BANS + OBJECTIVES panel sits to the right of the player data;
+    # cropping it out ensures the LAYOUT column fractions align with the
+    # actual KDA / items / name columns.
+    if bans_x is not None:
+        # Crop well left of the BANS header to exclude the gap between
+        # the gold column and the panel.
+        right_edge = bans_x - int(w_full * 0.06)
+        right_edge = max(right_edge, int(w_full * 0.4))
+    else:
+        # Fallback: brightness-based right-edge detection for cases where
+        # "BANS" text was not found (e.g. custom game modes).  This still
+        # handles the Social/Friends side panel which has a brighter
+        # background than the dark scoreboard.
+        probe_h = min(60, cropped.shape[0])
+        probe_strip = cv2.cvtColor(cropped[:probe_h, :], cv2.COLOR_BGR2GRAY)
+        col_brightness = np.mean(probe_strip, axis=0)
 
-    # Walk from the right edge inward until brightness rises above the
-    # dark-background threshold — that marks the scoreboard boundary.
-    # If the entire strip is fairly uniform (no side panel), keep full width.
-    right_edge = cropped.shape[1]
-    threshold = np.mean(col_brightness) * 0.45
-    for col_x in range(len(col_brightness) - 1, int(len(col_brightness) * 0.6), -1):
-        if col_brightness[col_x] > threshold and col_brightness[col_x - 1] < threshold:
-            right_edge = col_x
-            break
+        right_edge = cropped.shape[1]
+        threshold = np.mean(col_brightness) * 0.45
+        for col_x in range(len(col_brightness) - 1, int(len(col_brightness) * 0.6), -1):
+            if col_brightness[col_x] > threshold and col_brightness[col_x - 1] < threshold:
+                right_edge = col_x
+                break
 
     return cropped[:, :right_edge]
 
@@ -698,7 +720,13 @@ def extract_player_name(row: np.ndarray, icon_x: int, icon_r: int) -> str:
     region  = row[:, x_start:x_end]
     processed = preprocess_for_ocr(region)
     raw = pytesseract.image_to_string(processed, config="--psm 7 --oem 3")
-    return raw.strip()
+    cleaned = raw.strip()
+    # Strip trailing OCR artifacts: sequences of short space-separated
+    # fragments (1-3 chars each) that don't look like part of a real name.
+    # These appear when faint UI elements at the edge of the name column
+    # are misread by Tesseract (e.g. item icons, rank badges).
+    cleaned = re.sub(r'(\s+\S{1,3}){2,}$', '', cleaned)
+    return cleaned.strip()
 
 
 def extract_kda(row: np.ndarray) -> dict[str, Optional[int]]:
@@ -706,6 +734,11 @@ def extract_kda(row: np.ndarray) -> dict[str, Optional[int]]:
     OCR the K/D/A column from a single player row.
 
     Parses text like "9 / 4 / 15" into kills, deaths, assists.
+
+    Uses a two-stage approach:
+    1. Standard OCR + regex for the "K / D / A" pattern with slashes.
+    2. Fallback: character bounding boxes + spatial zones to handle cases
+       where Tesseract misreads the "/" separator (e.g. as "7" or "1").
 
     Args:
         row: Full-width BGR crop of the player row.
@@ -720,6 +753,52 @@ def extract_kda(row: np.ndarray) -> dict[str, Optional[int]]:
         processed,
         config="--psm 7 --oem 3 -c tessedit_char_whitelist=0123456789/ ",
     )
+    # Match the K/D/A pattern with slashes rather than just finding any
+    # digits.  This avoids false positives from stray digits near
+    # column boundaries (e.g. trinket icon edge, CS number bleed).
+    match = re.search(r'(\d+)\s*/\s*(\d+)\s*/\s*(\d+)', raw)
+    if match:
+        k, d, a = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        # Sanity check: individual KDA values above 50 are almost
+        # certainly OCR artefacts (e.g. a misread "/" merged with a
+        # neighbouring digit).  Fall through to the spatial fallback.
+        if k <= 50 and d <= 50 and a <= 50:
+            return {"kills": k, "deaths": d, "assists": a}
+
+    # Fallback: use character bounding boxes to classify digits by
+    # horizontal position.  The KDA text layout is consistent:
+    #   K  /  D  /  A
+    # with slashes centred at roughly 36% and 64% of the processed
+    # image width.  Digits in three spatial zones map to K, D, A.
+    boxes_raw = pytesseract.image_to_boxes(
+        processed, config="--psm 7 --oem 3"
+    )
+    if boxes_raw.strip():
+        pw = processed.shape[1]
+        k_digits: list[str] = []
+        d_digits: list[str] = []
+        a_digits: list[str] = []
+        for line in boxes_raw.strip().split("\n"):
+            parts = line.split()
+            if len(parts) >= 5 and parts[0].isdigit():
+                x_center = (int(parts[1]) + int(parts[3])) / 2
+                if x_center < pw * 0.33:
+                    k_digits.append(parts[0])
+                elif pw * 0.39 < x_center < pw * 0.50:
+                    d_digits.append(parts[0])
+                elif x_center > pw * 0.66:
+                    a_digits.append(parts[0])
+        k_str = "".join(k_digits)
+        d_str = "".join(d_digits)
+        a_str = "".join(a_digits)
+        if k_str and d_str and a_str:
+            return {
+                "kills":   int(k_str),
+                "deaths":  int(d_str),
+                "assists": int(a_str),
+            }
+
+    # Last resort: find any three digit groups in the raw text.
     numbers = re.findall(r"\d+", raw)
     if len(numbers) >= 3:
         return {
