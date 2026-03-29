@@ -1,0 +1,44 @@
+{
+  // --- Formatting ---
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "files.eol": "\n",
+
+  // --- ESLint ---
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+
+  // --- TypeScript ---
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // --- Editor UX ---
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.stickyScroll.enabled": true,
+
+  // --- Markdown ---
+  "editor.wordWrap": "off",
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // --- File associations ---
+  "files.associations": {
+    "*.css": "css"
+  },
+
+  // --- Explorer ---
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.test.ts, ${capture}.spec.ts",
+    "*.tsx": "${capture}.test.tsx, ${capture}.spec.tsx",
+    "vite.config.*": "vitest.config.*",
+    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, .npmrc"
+  }
+}

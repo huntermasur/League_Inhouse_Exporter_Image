@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS artifacts
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# VS Code local settings (keep .vscode/settings.json and extensions.json committed)
+.vscode/*.code-snippets
+.vscode/launch.json
+
+# Testing / coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.tsbuildinfo
