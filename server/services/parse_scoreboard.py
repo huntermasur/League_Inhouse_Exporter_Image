@@ -224,22 +224,66 @@ def _detect_ban_icons(
     if not candidates:
         return []
 
-    # Sort into rows then left-to-right within each row.
-    heights = [c[3] for c in candidates]
-    median_h = sorted(heights)[len(heights) // 2]
+    # ── Step 1: discard non-ban-column contours via x-column clustering ──────
+    #
+    # The ban grid is always 3 columns wide, each column holding AT MOST 2 icons
+    # (one per row).  Spurious contours — objective icons, frame elements, score
+    # text — tend to form a 3rd-or-later cluster at a different x position, AND
+    # are vertically spread with 3+ members per cluster.  We reject any x-column
+    # that has 3+ members, then take only the 3 leftmost valid columns so we
+    # never exceed the expected 5 ban slots.
+    #
+    # Using the median icon width as the clustering threshold makes this
+    # resolution-independent — it works the same at 1080p, 1440p, or 4K.
+
+    icon_widths = sorted(c[2] for c in candidates)
+    median_icon_w = icon_widths[len(icon_widths) // 2]
+    x_tolerance = median_icon_w * 0.5
+
+    cands_by_x = sorted(candidates, key=lambda c: c[0])
+    columns: list[list] = []
+    current_col: list = [cands_by_x[0]]
+    for c in cands_by_x[1:]:
+        # Compare against the leftmost member of the current column so that
+        # accumulated drift within a column can never bridge two real columns.
+        if c[0] - current_col[0][0] < x_tolerance:
+            current_col.append(c)
+        else:
+            columns.append(current_col)
+            current_col = [c]
+    columns.append(current_col)
+
+    # Keep only columns with ≤2 members (ban cols) and take at most 3 (the grid
+    # is never more than 3 columns wide).
+    ban_cols = [col for col in columns if len(col) <= 2][:3]
+    candidates = [c for col in ban_cols for c in col]
+
+    if not candidates:
+        return []
+
+    # ── Step 2: split remaining candidates into top row and bottom row ────────
+    #
+    # Sort by y then find the single largest y-gap — that gap is always the
+    # inter-row space between the top-3 and bottom-2 icons, which is structurally
+    # larger than any within-row y variation across all resolutions.
+
     candidates.sort(key=lambda c: c[1])
 
-    rows: list[list[tuple[int, int, int, int, float]]] = []
-    current_row = [candidates[0]]
-    for c in candidates[1:]:
-        if abs(c[1] - current_row[0][1]) < median_h * 0.7:
-            current_row.append(c)
-        else:
-            rows.append(sorted(current_row, key=lambda c: c[0]))
-            current_row = [c]
-    rows.append(sorted(current_row, key=lambda c: c[0]))
+    if len(candidates) >= 2:
+        y_vals = [c[1] for c in candidates]
+        gaps = [(y_vals[i + 1] - y_vals[i], i) for i in range(len(y_vals) - 1)]
+        split_after = max(gaps, key=lambda g: g[0])[1]
+        row1 = candidates[: split_after + 1]
+        row2 = candidates[split_after + 1 :]
+    else:
+        row1 = candidates
+        row2 = []
 
-    ordered = [c for row in rows for c in row]
+    # Sort each row left-to-right so icons read in visual order (1,2,3 / 4,5).
+    row1.sort(key=lambda c: c[0])
+    row2.sort(key=lambda c: c[0])
+
+    ordered = row1 + row2
 
     # Crop each icon with a small inset to exclude the dark border frame.
     crops: list[np.ndarray] = []
