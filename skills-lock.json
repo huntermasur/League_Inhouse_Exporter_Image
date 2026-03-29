@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "data-visualizer": {
+      "source": "daffy0208/ai-dev-standards",
+      "sourceType": "github",
+      "computedHash": "94987298a6e3ba980fa22610e1e5fc7ad8fb38a8dfe4ab3e6759c25b4d22bae1"
+    },
+    "recharts": {
+      "source": "ansanabria/skills",
+      "sourceType": "github",
+      "computedHash": "7837f15d0abac0f5199eba9417bd8950e4f01c58731c81884e82e58b0c474404"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "9fb08ab39585f6f770d0c1c735f83e619aba2089d7ad50ba2a305eff715e08b9"
+    }
+  }
+}

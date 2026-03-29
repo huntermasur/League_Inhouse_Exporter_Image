@@ -1,0 +1,209 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e0e6f0;
+  margin-bottom: 1.5rem;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #11131f;
+  border: 1px solid #1e2030;
+  border-radius: 8px;
+  padding: 0 0.5rem 0 0;
+  transition: border-color 0.15s;
+}
+
+.row:hover {
+  border-color: #2a2d3e;
+}
+
+.rowActive {
+  border-color: #c89b3c;
+}
+
+.rowBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #c8c8d4;
+  font-size: 0.9rem;
+}
+
+.gameId {
+  font-family: monospace;
+  color: #8b9bb4;
+  min-width: 90px;
+}
+
+.date {
+  color: #5a6478;
+  min-width: 90px;
+}
+
+.result {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.team1 { color: #60a5fa; }
+.team2 { color: #f472b6; }
+
+.deleteBtn {
+  background: transparent;
+  border: none;
+  color: #5a1a1a;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  color: #f87171;
+  background: #2a1010;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.status {
+  color: #8b9bb4;
+  padding: 1rem 0;
+}
+
+.error {
+  color: #f87171;
+  background: #2a1010;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #5a1a1a;
+}
+
+.empty {
+  color: #5a6478;
+  text-align: center;
+  padding: 4rem;
+  line-height: 1.8;
+}
+
+/* ── Detail ──────────────────────────────────────────────────── */
+
+.detail {
+  border-top: 1px solid #1e2030;
+  padding-top: 2rem;
+}
+
+.detailHeading {
+  font-size: 1rem;
+  color: #8b9bb4;
+  margin-bottom: 1.5rem;
+  font-weight: 400;
+}
+
+.detailHeading code {
+  color: #c89b3c;
+  font-family: monospace;
+}
+
+.teamBlock {
+  margin-bottom: 2rem;
+}
+
+.teamLabel {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.win { color: #4ade80; }
+.loss { color: #f87171; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-bottom: 0.75rem;
+}
+
+.table th {
+  text-align: left;
+  color: #5a6478;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 0.75rem 0.4rem;
+}
+
+.table td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid #0f1118;
+}
+
+.role {
+  color: #8b9bb4;
+  width: 70px;
+  font-size: 0.8rem;
+}
+
+.champion {
+  color: #c89b3c;
+}
+
+.k { color: #4ade80; }
+.d { color: #f87171; }
+.a { color: #60a5fa; }
+
+.bansList {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.bansLabel {
+  font-size: 0.75rem;
+  color: #5a6478;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.banChip {
+  font-size: 0.78rem;
+  color: #8b9bb4;
+  background: #0d0e17;
+  border: 1px solid #1e2030;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}

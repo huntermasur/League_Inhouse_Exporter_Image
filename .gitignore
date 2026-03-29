@@ -11,6 +11,9 @@ build/
 .env.local
 .env.*.local
 
+# Local data (SQLite DB + uploaded screenshots)
+data/
+
 # Logs
 logs/
 *.log

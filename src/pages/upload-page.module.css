@@ -1,0 +1,124 @@
+.page {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e0e6f0;
+  margin-bottom: 0.5rem;
+}
+
+.sub {
+  color: #8b9bb4;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  border: 2px dashed #2a2d3e;
+  border-radius: 12px;
+  background: #11131f;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 220px;
+}
+
+.dropzone:hover {
+  border-color: #c89b3c;
+  background: #13151f;
+}
+
+.dragOver {
+  border-color: #c89b3c;
+  background: #16182a;
+}
+
+.parsing {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.fileInput {
+  display: none;
+}
+
+.dropIcon {
+  font-size: 2.5rem;
+}
+
+.dropText {
+  font-size: 1rem;
+  color: #c8c8d4;
+}
+
+.dropHint {
+  font-size: 0.8rem;
+  color: #5a6478;
+}
+
+.parsingText {
+  color: #c89b3c;
+  font-size: 1rem;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status {
+  text-align: center;
+  padding: 4rem;
+}
+
+.success {
+  font-size: 1.5rem;
+  color: #4ade80;
+  margin-bottom: 0.75rem;
+}
+
+.gameId {
+  color: #8b9bb4;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.gameId code {
+  color: #c89b3c;
+  font-family: monospace;
+}
+
+.btn {
+  padding: 0.6rem 1.4rem;
+  border-radius: 6px;
+  border: none;
+  background: #c89b3c;
+  color: #0a0a0f;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: opacity 0.15s;
+}
+
+.btn:hover {
+  opacity: 0.85;
+}
+
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: #2a1010;
+  color: #f87171;
+  border: 1px solid #5a1a1a;
+  font-size: 0.9rem;
+}
