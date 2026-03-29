@@ -13,15 +13,15 @@
  * which is what scoreboard_reader.py uses to key the icon dictionary.
  */
 
-import fs from 'fs';
-import path from 'path';
-import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
-import { fileURLToPath } from 'url';
+import fs from "fs";
+import path from "path";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = path.resolve(__dirname, '..', 'data', 'champion_images');
-const DDRAGON_BASE = 'https://ddragon.leagueoflegends.com';
+const OUT_DIR = path.resolve(__dirname, "..", "data", "champion_images");
+const DDRAGON_BASE = "https://ddragon.leagueoflegends.com";
 const CONCURRENCY = 10; // parallel downloads at once
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -54,19 +54,19 @@ async function runConcurrent(tasks, concurrency) {
 
   const workers = Array.from({ length: concurrency }, () => worker());
   await Promise.all(workers);
-  process.stdout.write('\n');
+  process.stdout.write("\n");
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
-const versionFlag = args.indexOf('--version');
+const versionFlag = args.indexOf("--version");
 let version;
 
 if (versionFlag !== -1 && args[versionFlag + 1]) {
   version = args[versionFlag + 1];
 } else {
-  process.stdout.write('Fetching latest Data Dragon version... ');
+  process.stdout.write("Fetching latest Data Dragon version... ");
   const versions = await fetchJson(`${DDRAGON_BASE}/api/versions.json`);
   version = versions[0];
   console.log(version);
@@ -74,7 +74,7 @@ if (versionFlag !== -1 && args[versionFlag + 1]) {
 
 console.log(`Fetching champion list for patch ${version}...`);
 const championData = await fetchJson(
-  `${DDRAGON_BASE}/cdn/${version}/data/en_US/champion.json`
+  `${DDRAGON_BASE}/cdn/${version}/data/en_US/champion.json`,
 );
 
 const champions = Object.values(championData.data);
@@ -89,7 +89,7 @@ const toDownload = champions.filter((champ) => {
 });
 
 if (toDownload.length === 0) {
-  console.log('All champion portraits already downloaded — nothing to do.');
+  console.log("All champion portraits already downloaded — nothing to do.");
   process.exit(0);
 }
 

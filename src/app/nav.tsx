@@ -1,10 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
-import styles from './nav.module.css';
+import { Link, useLocation } from "react-router-dom";
+import styles from "./nav.module.css";
 
 const links = [
-  { to: '/', label: 'Upload' },
-  { to: '/games', label: 'Games' },
-  { to: '/stats', label: 'Stats' },
+  { to: "/", label: "Upload" },
+  { to: "/games", label: "Games" },
+  { to: "/stats", label: "Stats" },
 ];
 
 export function Nav() {
@@ -19,7 +19,7 @@ export function Nav() {
             <Link
               to={to}
               className={pathname === to ? styles.active : undefined}
-              aria-current={pathname === to ? 'page' : undefined}
+              aria-current={pathname === to ? "page" : undefined}
             >
               {label}
             </Link>

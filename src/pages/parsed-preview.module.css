@@ -52,8 +52,12 @@
   border-bottom: 1px solid #1e2030;
 }
 
-.win { color: #4ade80; }
-.loss { color: #f87171; }
+.win {
+  color: #4ade80;
+}
+.loss {
+  color: #f87171;
+}
 
 .table {
   width: 100%;
@@ -143,7 +147,9 @@
   color: #8b9bb4;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .cancelBtn:hover {

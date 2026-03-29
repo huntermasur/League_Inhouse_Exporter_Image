@@ -1,4 +1,4 @@
-import type { ChampionBanStat } from '@/types';
+import type { ChampionBanStat } from "@/types";
 import {
   BarChart,
   Bar,
@@ -7,8 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
-import { chartTheme } from './chart-theme.js';
+} from "recharts";
+import { chartTheme } from "./chart-theme.js";
 
 interface Props {
   data: ChampionBanStat[];
@@ -26,8 +26,15 @@ export function ChampionBanRateChart({ data }: Props) {
     <>
       <h2 style={chartTheme.title}>Champion Ban Rate</h2>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={filtered} margin={{ top: 4, right: 16, bottom: 60, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
+        <BarChart
+          data={filtered}
+          margin={{ top: 4, right: 16, bottom: 60, left: 8 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={chartTheme.grid}
+            vertical={false}
+          />
           <XAxis
             dataKey="champion"
             tick={{ ...chartTheme.tick, fontSize: 10 }}

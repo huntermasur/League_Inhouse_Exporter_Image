@@ -1,7 +1,7 @@
-import type { ParsedGame, ParsedPlayer } from '@/types';
-import styles from './parsed-preview.module.css';
+import type { ParsedGame, ParsedPlayer } from "@/types";
+import styles from "./parsed-preview.module.css";
 
-const POSITIONS = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const;
+const POSITIONS = ["Top", "Jungle", "Mid", "Bot", "Support"] as const;
 
 interface Props {
   parsed: ParsedGame;
@@ -11,8 +11,18 @@ interface Props {
   saving: boolean;
 }
 
-export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }: Props) {
-  function updatePlayer(idx: number, field: keyof ParsedPlayer, value: string | number) {
+export function ParsedPreview({
+  parsed,
+  onChange,
+  onConfirm,
+  onCancel,
+  saving,
+}: Props) {
+  function updatePlayer(
+    idx: number,
+    field: keyof ParsedPlayer,
+    value: string | number,
+  ) {
     const players = parsed.players.map((p, i) =>
       i === idx ? { ...p, [field]: value } : p,
     );
@@ -35,14 +45,21 @@ export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }:
   return (
     <div className={styles.page}>
       <h1 className={styles.heading}>Review Parsed Data</h1>
-      <p className={styles.sub}>Check and correct anything Gemini may have misread before saving.</p>
+      <p className={styles.sub}>
+        Check and correct anything Gemini may have misread before saving.
+      </p>
 
       <div className={styles.winnerRow}>
         <label className={styles.label}>Winning team</label>
         <select
           className={styles.select}
           value={parsed.winning_team}
-          onChange={(e) => onChange({ ...parsed, winning_team: Number(e.target.value) as 1 | 2 })}
+          onChange={(e) =>
+            onChange({
+              ...parsed,
+              winning_team: Number(e.target.value) as 1 | 2,
+            })
+          }
         >
           <option value={1}>Team 1</option>
           <option value={2}>Team 2</option>
@@ -56,8 +73,10 @@ export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }:
 
         return (
           <section key={team} className={styles.teamSection}>
-            <h2 className={`${styles.teamHeading} ${won ? styles.win : styles.loss}`}>
-              Team {team} — {won ? 'Victory' : 'Defeat'}
+            <h2
+              className={`${styles.teamHeading} ${won ? styles.win : styles.loss}`}
+            >
+              Team {team} — {won ? "Victory" : "Defeat"}
             </h2>
 
             <table className={styles.table}>
@@ -76,12 +95,16 @@ export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }:
                   const globalIdx = parsed.players.indexOf(p);
                   return (
                     <tr key={globalIdx}>
-                      <td className={styles.role}>{POSITIONS[p.position - 1]}</td>
+                      <td className={styles.role}>
+                        {POSITIONS[p.position - 1]}
+                      </td>
                       <td>
                         <input
                           className={styles.input}
                           value={p.username}
-                          onChange={(e) => updatePlayer(globalIdx, 'username', e.target.value)}
+                          onChange={(e) =>
+                            updatePlayer(globalIdx, "username", e.target.value)
+                          }
                           aria-label={`Username for ${POSITIONS[p.position - 1]}`}
                         />
                       </td>
@@ -89,18 +112,26 @@ export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }:
                         <input
                           className={styles.input}
                           value={p.champion}
-                          onChange={(e) => updatePlayer(globalIdx, 'champion', e.target.value)}
+                          onChange={(e) =>
+                            updatePlayer(globalIdx, "champion", e.target.value)
+                          }
                           aria-label={`Champion for ${POSITIONS[p.position - 1]}`}
                         />
                       </td>
-                      {(['kills', 'deaths', 'assists'] as const).map((stat) => (
+                      {(["kills", "deaths", "assists"] as const).map((stat) => (
                         <td key={stat}>
                           <input
                             className={`${styles.input} ${styles.numInput}`}
                             type="number"
                             min={0}
                             value={p[stat]}
-                            onChange={(e) => updatePlayer(globalIdx, stat, Number(e.target.value))}
+                            onChange={(e) =>
+                              updatePlayer(
+                                globalIdx,
+                                stat,
+                                Number(e.target.value),
+                              )
+                            }
                             aria-label={`${stat} for ${p.username}`}
                           />
                         </td>
@@ -131,11 +162,19 @@ export function ParsedPreview({ parsed, onChange, onConfirm, onCancel, saving }:
       })}
 
       <div className={styles.actions}>
-        <button className={styles.cancelBtn} onClick={onCancel} disabled={saving}>
+        <button
+          className={styles.cancelBtn}
+          onClick={onCancel}
+          disabled={saving}
+        >
           Cancel
         </button>
-        <button className={styles.confirmBtn} onClick={() => onConfirm(parsed)} disabled={saving}>
-          {saving ? 'Saving…' : 'Save Game'}
+        <button
+          className={styles.confirmBtn}
+          onClick={() => onConfirm(parsed)}
+          disabled={saving}
+        >
+          {saving ? "Saving…" : "Save Game"}
         </button>
       </div>
     </div>

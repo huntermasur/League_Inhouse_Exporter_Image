@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Nav } from './nav.js';
-import { UploadPage } from '../pages/upload-page.js';
-import { GamesPage } from '../pages/games-page.js';
-import { StatsPage } from '../pages/stats-page.js';
-import styles from './app-shell.module.css';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Nav } from "./nav.js";
+import { UploadPage } from "../pages/upload-page.js";
+import { GamesPage } from "../pages/games-page.js";
+import { StatsPage } from "../pages/stats-page.js";
+import styles from "./app-shell.module.css";
 
 export function AppShell() {
   return (

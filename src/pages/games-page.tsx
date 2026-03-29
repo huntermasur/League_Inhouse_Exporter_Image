@@ -1,63 +1,79 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Game, GameDetail } from '@/types';
-import { fetchGames, fetchGame, deleteGame } from '../shared/api.js';
-import styles from './games-page.module.css';
+import { useState, useEffect, useCallback } from "react";
+import type { Game, GameDetail } from "@/types";
+import { fetchGames, fetchGame, deleteGame } from "../shared/api.js";
+import styles from "./games-page.module.css";
 
-const POSITIONS = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'] as const;
+const POSITIONS = ["Top", "Jungle", "Mid", "Bot", "Support"] as const;
 
 export function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [selected, setSelected] = useState<GameDetail | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState('');
+  const [deletingId, setDeletingId] = useState("");
 
   useEffect(() => {
     fetchGames()
       .then(setGames)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load games'))
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : "Failed to load games"),
+      )
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSelect = useCallback(async (id: string) => {
-    if (selected?.id === id) {
-      setSelected(null);
-      return;
-    }
-    setSelectedLoading(true);
-    try {
-      const detail = await fetchGame(id);
-      setSelected(detail);
-    } catch {
-      // ignore
-    } finally {
-      setSelectedLoading(false);
-    }
-  }, [selected]);
+  const handleSelect = useCallback(
+    async (id: string) => {
+      if (selected?.id === id) {
+        setSelected(null);
+        return;
+      }
+      setSelectedLoading(true);
+      try {
+        const detail = await fetchGame(id);
+        setSelected(detail);
+      } catch {
+        // ignore
+      } finally {
+        setSelectedLoading(false);
+      }
+    },
+    [selected],
+  );
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!confirm(`Delete game ${id.slice(0, 8)}…? This cannot be undone.`)) return;
-    setDeletingId(id);
-    try {
-      await deleteGame(id);
-      setGames((prev) => prev.filter((g) => g.id !== id));
-      if (selected?.id === id) setSelected(null);
-    } catch {
-      // ignore
-    } finally {
-      setDeletingId('');
-    }
-  }, [selected]);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm(`Delete game ${id.slice(0, 8)}…? This cannot be undone.`))
+        return;
+      setDeletingId(id);
+      try {
+        await deleteGame(id);
+        setGames((prev) => prev.filter((g) => g.id !== id));
+        if (selected?.id === id) setSelected(null);
+      } catch {
+        // ignore
+      } finally {
+        setDeletingId("");
+      }
+    },
+    [selected],
+  );
 
   if (loading) return <div className={styles.status}>Loading games…</div>;
-  if (error) return <p role="alert" className={styles.error}>{error}</p>;
+  if (error)
+    return (
+      <p role="alert" className={styles.error}>
+        {error}
+      </p>
+    );
 
   if (games.length === 0) {
     return (
       <div className={styles.empty}>
         <p>No games recorded yet.</p>
-        <p>Head to <strong>Upload</strong> to add your first game.</p>
+        <p>
+          Head to <strong>Upload</strong> to add your first game.
+        </p>
       </div>
     );
   }
@@ -70,15 +86,22 @@ export function GamesPage() {
 
       <ul className={styles.list}>
         {games.map((g) => (
-          <li key={g.id} className={`${styles.row} ${selected?.id === g.id ? styles.rowActive : ''}`}>
+          <li
+            key={g.id}
+            className={`${styles.row} ${selected?.id === g.id ? styles.rowActive : ""}`}
+          >
             <button
               className={styles.rowBtn}
               onClick={() => handleSelect(g.id)}
               aria-expanded={selected?.id === g.id}
             >
               <span className={styles.gameId}>{g.id.slice(0, 8)}…</span>
-              <span className={styles.date}>{new Date(g.created_at).toLocaleDateString()}</span>
-              <span className={`${styles.result} ${g.winning_team === 1 ? styles.team1 : styles.team2}`}>
+              <span className={styles.date}>
+                {new Date(g.created_at).toLocaleDateString()}
+              </span>
+              <span
+                className={`${styles.result} ${g.winning_team === 1 ? styles.team1 : styles.team2}`}
+              >
                 Team {g.winning_team} won
               </span>
             </button>
@@ -88,13 +111,15 @@ export function GamesPage() {
               disabled={deletingId === g.id}
               aria-label={`Delete game ${g.id.slice(0, 8)}`}
             >
-              {deletingId === g.id ? '…' : '✕'}
+              {deletingId === g.id ? "…" : "✕"}
             </button>
           </li>
         ))}
       </ul>
 
-      {selectedLoading && <div className={styles.status}>Loading game details…</div>}
+      {selectedLoading && (
+        <div className={styles.status}>Loading game details…</div>
+      )}
 
       {selected && !selectedLoading && (
         <section className={styles.detail} aria-label="Game detail">
@@ -109,8 +134,10 @@ export function GamesPage() {
 
             return (
               <div key={team} className={styles.teamBlock}>
-                <h3 className={`${styles.teamLabel} ${won ? styles.win : styles.loss}`}>
-                  Team {team} — {won ? 'Victory' : 'Defeat'}
+                <h3
+                  className={`${styles.teamLabel} ${won ? styles.win : styles.loss}`}
+                >
+                  Team {team} — {won ? "Victory" : "Defeat"}
                 </h3>
                 <table className={styles.table}>
                   <thead>
@@ -126,7 +153,9 @@ export function GamesPage() {
                   <tbody>
                     {players.map((p) => (
                       <tr key={p.id}>
-                        <td className={styles.role}>{POSITIONS[p.position - 1]}</td>
+                        <td className={styles.role}>
+                          {POSITIONS[p.position - 1]}
+                        </td>
                         <td>{p.username}</td>
                         <td className={styles.champion}>{p.champion}</td>
                         <td className={styles.k}>{p.kills}</td>
@@ -140,7 +169,9 @@ export function GamesPage() {
                   <div className={styles.bansList}>
                     <span className={styles.bansLabel}>Bans:</span>
                     {bans.map((b) => (
-                      <span key={b.id} className={styles.banChip}>{b.champion}</span>
+                      <span key={b.id} className={styles.banChip}>
+                        {b.champion}
+                      </span>
                     ))}
                   </div>
                 )}

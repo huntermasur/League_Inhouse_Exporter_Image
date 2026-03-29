@@ -70,8 +70,12 @@
   letter-spacing: 0.05em;
 }
 
-.team1 { color: #60a5fa; }
-.team2 { color: #f472b6; }
+.team1 {
+  color: #60a5fa;
+}
+.team2 {
+  color: #f472b6;
+}
 
 .deleteBtn {
   background: transparent;
@@ -81,7 +85,9 @@
   font-size: 0.85rem;
   padding: 0.4rem 0.6rem;
   border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .deleteBtn:hover:not(:disabled) {
@@ -145,8 +151,12 @@
   letter-spacing: 0.05em;
 }
 
-.win { color: #4ade80; }
-.loss { color: #f87171; }
+.win {
+  color: #4ade80;
+}
+.loss {
+  color: #f87171;
+}
 
 .table {
   width: 100%;
@@ -180,9 +190,15 @@
   color: #c89b3c;
 }
 
-.k { color: #4ade80; }
-.d { color: #f87171; }
-.a { color: #60a5fa; }
+.k {
+  color: #4ade80;
+}
+.d {
+  color: #f87171;
+}
+.a {
+  color: #60a5fa;
+}
 
 .bansList {
   display: flex;

@@ -1,30 +1,30 @@
-import { useState, useCallback } from 'react';
-import type { ParsedGame } from '@/types';
-import { parseScreenshot, saveGame } from '../shared/api.js';
-import { ParsedPreview } from './parsed-preview.js';
-import styles from './upload-page.module.css';
+import { useState, useCallback } from "react";
+import type { ParsedGame } from "@/types";
+import { parseScreenshot, saveGame } from "../shared/api.js";
+import { ParsedPreview } from "./parsed-preview.js";
+import styles from "./upload-page.module.css";
 
-type Phase = 'idle' | 'parsing' | 'preview' | 'saving' | 'saved' | 'error';
+type Phase = "idle" | "parsing" | "preview" | "saving" | "saved" | "error";
 
 export function UploadPage() {
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [tempFile, setTempFile] = useState('');
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [tempFile, setTempFile] = useState("");
   const [parsed, setParsed] = useState<ParsedGame | null>(null);
-  const [savedId, setSavedId] = useState('');
+  const [savedId, setSavedId] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
   const handleFile = useCallback(async (file: File) => {
-    setPhase('parsing');
-    setErrorMsg('');
+    setPhase("parsing");
+    setErrorMsg("");
     try {
       const result = await parseScreenshot(file);
       setTempFile(result.tempFile);
       setParsed(result.parsed);
-      setPhase('preview');
+      setPhase("preview");
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
-      setPhase('error');
+      setErrorMsg(err instanceof Error ? err.message : "Unknown error");
+      setPhase("error");
     }
   }, []);
 
@@ -46,27 +46,30 @@ export function UploadPage() {
     [handleFile],
   );
 
-  const handleConfirm = useCallback(async (confirmed: ParsedGame) => {
-    setPhase('saving');
-    try {
-      const { id } = await saveGame(tempFile, confirmed);
-      setSavedId(id);
-      setPhase('saved');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
-      setPhase('error');
-    }
-  }, [tempFile]);
+  const handleConfirm = useCallback(
+    async (confirmed: ParsedGame) => {
+      setPhase("saving");
+      try {
+        const { id } = await saveGame(tempFile, confirmed);
+        setSavedId(id);
+        setPhase("saved");
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : "Unknown error");
+        setPhase("error");
+      }
+    },
+    [tempFile],
+  );
 
   const handleReset = useCallback(() => {
-    setPhase('idle');
+    setPhase("idle");
     setParsed(null);
-    setTempFile('');
-    setSavedId('');
-    setErrorMsg('');
+    setTempFile("");
+    setSavedId("");
+    setErrorMsg("");
   }, []);
 
-  if (phase === 'preview' && parsed) {
+  if (phase === "preview" && parsed) {
     return (
       <ParsedPreview
         parsed={parsed}
@@ -78,16 +81,20 @@ export function UploadPage() {
     );
   }
 
-  if (phase === 'saving') {
+  if (phase === "saving") {
     return <div className={styles.status}>Saving game…</div>;
   }
 
-  if (phase === 'saved') {
+  if (phase === "saved") {
     return (
       <div className={styles.status}>
         <p className={styles.success}>Game saved!</p>
-        <p className={styles.gameId}>ID: <code>{savedId}</code></p>
-        <button className={styles.btn} onClick={handleReset}>Upload another</button>
+        <p className={styles.gameId}>
+          ID: <code>{savedId}</code>
+        </p>
+        <button className={styles.btn} onClick={handleReset}>
+          Upload another
+        </button>
       </div>
     );
   }
@@ -95,11 +102,17 @@ export function UploadPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.heading}>Upload Postgame Screenshot</h1>
-      <p className={styles.sub}>Drop a League of Legends scoreboard screenshot and we'll extract all the data automatically.</p>
+      <p className={styles.sub}>
+        Drop a League of Legends scoreboard screenshot and we'll extract all the
+        data automatically.
+      </p>
 
       <label
-        className={`${styles.dropzone} ${dragOver ? styles.dragOver : ''} ${phase === 'parsing' ? styles.parsing : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        className={`${styles.dropzone} ${dragOver ? styles.dragOver : ""} ${phase === "parsing" ? styles.parsing : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         aria-label="Upload postgame screenshot"
@@ -109,21 +122,31 @@ export function UploadPage() {
           accept="image/png,image/jpeg,image/webp"
           className={styles.fileInput}
           onChange={handleInputChange}
-          disabled={phase === 'parsing'}
+          disabled={phase === "parsing"}
         />
-        {phase === 'parsing' ? (
-          <span className={styles.parsingText}>Analyzing image with Gemini…</span>
+        {phase === "parsing" ? (
+          <span className={styles.parsingText}>
+            Analyzing image with Gemini…
+          </span>
         ) : (
           <>
-            <span className={styles.dropIcon} aria-hidden="true">📸</span>
-            <span className={styles.dropText}>Click or drag & drop your screenshot here</span>
-            <span className={styles.dropHint}>PNG, JPEG, or WEBP · max 20 MB</span>
+            <span className={styles.dropIcon} aria-hidden="true">
+              📸
+            </span>
+            <span className={styles.dropText}>
+              Click or drag & drop your screenshot here
+            </span>
+            <span className={styles.dropHint}>
+              PNG, JPEG, or WEBP · max 20 MB
+            </span>
           </>
         )}
       </label>
 
-      {phase === 'error' && (
-        <p role="alert" className={styles.error}>{errorMsg}</p>
+      {phase === "error" && (
+        <p role="alert" className={styles.error}>
+          {errorMsg}
+        </p>
       )}
     </div>
   );

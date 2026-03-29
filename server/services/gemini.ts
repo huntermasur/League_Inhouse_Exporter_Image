@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import fs from 'fs';
-import type { ParsedGame } from '../types.js';
-import { getChampionHints, type ChampionHint } from './python-bridge.js';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
+import type { ParsedGame } from "../types.js";
+import { getChampionHints, type ChampionHint } from "./python-bridge.js";
 
 const BASE_PROMPT = `You are analyzing a League of Legends post-game scoreboard screenshot.
 
@@ -56,22 +56,24 @@ function buildPrompt(hints: ChampionHint[] | null): string {
     const candidates = h.top_matches
       .slice(0, 5)
       .map(([name]) => name)
-      .join(', ');
+      .join(", ");
     return `  Team ${team} Player ${playerNum}: ${candidates}`;
   });
 
   return (
     BASE_PROMPT +
     `\n\nCHAMPION ICON HINTS (from image template-matching, players listed top-to-bottom):
-${rows.join('\n')}
+${rows.join("\n")}
 The correct champion for each player is almost certainly one of the listed candidates. Use these hints together with your own visual analysis to resolve any ambiguous icons.`
   );
 }
 
-export async function parseGameScreenshot(imagePath: string): Promise<ParsedGame> {
+export async function parseGameScreenshot(
+  imagePath: string,
+): Promise<ParsedGame> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY environment variable is not set');
+    throw new Error("GEMINI_API_KEY environment variable is not set");
   }
 
   // Run template matching and Gemini setup in parallel to avoid serial latency.
@@ -81,14 +83,18 @@ export async function parseGameScreenshot(imagePath: string): Promise<ParsedGame
   ]);
 
   if (hints) {
-    console.log(`[champion-hints] Injecting hints for ${hints.length} player rows`);
+    console.log(
+      `[champion-hints] Injecting hints for ${hints.length} player rows`,
+    );
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const base64Image = imageData.toString('base64');
-  const mimeType = imagePath.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+  const base64Image = imageData.toString("base64");
+  const mimeType = imagePath.toLowerCase().endsWith(".png")
+    ? "image/png"
+    : "image/jpeg";
 
   const result = await model.generateContent([
     buildPrompt(hints),
@@ -103,7 +109,10 @@ export async function parseGameScreenshot(imagePath: string): Promise<ParsedGame
   const text = result.response.text().trim();
 
   // Strip any accidental markdown code fences
-  const cleaned = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+  const cleaned = text
+    .replace(/^```(?:json)?\n?/i, "")
+    .replace(/\n?```$/i, "")
+    .trim();
 
   const parsed: ParsedGame = JSON.parse(cleaned);
   return parsed;

@@ -1,19 +1,24 @@
-import { useState, useEffect } from 'react';
-import type { PlayerGameStat, ChampionKdaStat, ChampionPickStat, ChampionBanStat } from '@/types';
+import { useState, useEffect } from "react";
+import type {
+  PlayerGameStat,
+  ChampionKdaStat,
+  ChampionPickStat,
+  ChampionBanStat,
+} from "@/types";
 import {
   fetchPlayerStats,
   fetchChampionKda,
   fetchChampionPicks,
   fetchChampionBans,
-} from '../shared/api.js';
-import { GamesPlayedChart } from '../features/stats/games-played-chart.js';
-import { WinPercentChart } from '../features/stats/win-percent-chart.js';
-import { ChampionKdaChart } from '../features/stats/champion-kda-chart.js';
-import { ChampionPickChart } from '../features/stats/champion-pick-chart.js';
-import { ChampionBanCountChart } from '../features/stats/champion-ban-count-chart.js';
-import { ChampionBanDistributionChart } from '../features/stats/champion-ban-distribution-chart.js';
-import { ChampionBanRateChart } from '../features/stats/champion-ban-rate-chart.js';
-import styles from './stats-page.module.css';
+} from "../shared/api.js";
+import { GamesPlayedChart } from "../features/stats/games-played-chart.js";
+import { WinPercentChart } from "../features/stats/win-percent-chart.js";
+import { ChampionKdaChart } from "../features/stats/champion-kda-chart.js";
+import { ChampionPickChart } from "../features/stats/champion-pick-chart.js";
+import { ChampionBanCountChart } from "../features/stats/champion-ban-count-chart.js";
+import { ChampionBanDistributionChart } from "../features/stats/champion-ban-distribution-chart.js";
+import { ChampionBanRateChart } from "../features/stats/champion-ban-rate-chart.js";
+import styles from "./stats-page.module.css";
 
 export function StatsPage() {
   const [playerStats, setPlayerStats] = useState<PlayerGameStat[]>([]);
@@ -21,7 +26,7 @@ export function StatsPage() {
   const [pickStats, setPickStats] = useState<ChampionPickStat[]>([]);
   const [banStats, setBanStats] = useState<ChampionBanStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -36,12 +41,19 @@ export function StatsPage() {
         setPickStats(picks);
         setBanStats(bans);
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Failed to load stats'))
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : "Failed to load stats"),
+      )
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className={styles.status}>Loading stats…</div>;
-  if (error) return <p role="alert" className={styles.error}>{error}</p>;
+  if (error)
+    return (
+      <p role="alert" className={styles.error}>
+        {error}
+      </p>
+    );
 
   if (playerStats.length === 0) {
     return (
