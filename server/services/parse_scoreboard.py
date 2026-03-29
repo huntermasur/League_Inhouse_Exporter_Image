@@ -44,10 +44,12 @@ import pytesseract
 
 from scoreboard_reader import (  # noqa: E402
     load_champion_icons,
+    load_ban_champion_icons,
     find_scoreboard_region,
     find_circles_by_param_search,
     crop_circle_from_image,
     match_champion,
+    match_ban_champion,
     extract_player_name,
     extract_kda,
 )
@@ -96,90 +98,231 @@ def extract_winning_team(img: np.ndarray) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Ban detection (best-effort, per player row)
+# Ban detection (BANS + OBJECTIVES panel)
 # ---------------------------------------------------------------------------
 
-def _detect_circle_in_region(region: np.ndarray) -> Optional[tuple[int, int, int]]:
+def _find_ban_sections(img: np.ndarray) -> list[dict]:
     """
-    Try to detect a single small champion-icon circle inside `region`.
+    Use OCR to locate "BANS" header text in the full screenshot.
 
-    Uses lenient Hough parameters with several param2 values so it works
-    across screenshots with different compression levels.
+    Only searches the right 45 % of the image (where the BANS + OBJECTIVES
+    panel lives) to speed up OCR and avoid false positives.
 
-    Returns (x, y, r) in region-local coordinates, or None.
+    Returns:
+        List of position dicts ``{"x", "y", "w", "h"}`` sorted
+        top-to-bottom (team 1 first).
     """
-    rh, rw = region.shape[:2]
-    if rh < 8 or rw < 8:
-        return None
+    h, w = img.shape[:2]
+    x_offset = int(w * 0.55)
+    right_portion = cv2.cvtColor(img[:, x_offset:], cv2.COLOR_BGR2RGB)
 
-    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.medianBlur(gray, 3)
+    ocr_data = pytesseract.image_to_data(
+        right_portion, output_type=pytesseract.Output.DICT,
+    )
 
-    min_r = max(4, min(rh, rw) // 5)
-    max_r = min(30, min(rh, rw) // 2)
+    positions: list[dict] = []
+    for i, text in enumerate(ocr_data["text"]):
+        if "bans" in text.strip().lower():
+            positions.append({
+                "x": ocr_data["left"][i] + x_offset,
+                "y": ocr_data["top"][i],
+                "w": ocr_data["width"][i],
+                "h": ocr_data["height"][i],
+            })
 
-    for param2 in (15, 20, 25, 30, 35):
-        circles = cv2.HoughCircles(
-            blurred, cv2.HOUGH_GRADIENT, dp=1,
-            minDist=max(8, min_r * 2),
-            param1=50, param2=param2,
-            minRadius=min_r, maxRadius=max_r,
-        )
-        if circles is not None:
-            c = np.uint16(np.around(circles[0]))
-            # Pick the circle closest to the horizontal centre of the strip
-            best = min(c, key=lambda ci: abs(int(ci[0]) - rw // 2))
-            return int(best[0]), int(best[1]), int(best[2])
+    # De-duplicate: if multiple OCR hits are within ~30 px vertically
+    # (e.g. "BANS" detected both as a word and as part of the full line),
+    # keep the one with the wider bounding box.
+    if len(positions) > 2:
+        positions.sort(key=lambda p: p["y"])
+        merged: list[dict] = []
+        for pos in positions:
+            if not merged or abs(pos["y"] - merged[-1]["y"]) > 30:
+                merged.append(pos)
+            elif pos["w"] > merged[-1]["w"]:
+                merged[-1] = pos
+        positions = merged
 
-    return None
+    positions.sort(key=lambda p: p["y"])
+    return positions
+
+
+def _detect_ban_icons(
+    ban_region: np.ndarray,
+    min_icon_dim: int = 15,
+) -> list[np.ndarray]:
+    """
+    Detect individual ban icon crops inside a ban-section region.
+
+    Ban icons are square with a gray diagonal-X overlay.  The function uses
+    Otsu thresholding + morphological close + contour filtering to find
+    square-shaped bright blobs against the dark background.
+
+    Circular objective icons are rejected by fill-ratio filtering
+    (rectangle ≈ 1.0, circle ≈ 0.785).
+
+    Args:
+        ban_region:   BGR crop of the area below a "BANS" header.
+        min_icon_dim: Minimum width/height in pixels for an icon contour.
+
+    Returns:
+        List of BGR crops sorted left-to-right, top-to-bottom (max 5).
+    """
+    rh, rw = ban_region.shape[:2]
+    if rh < 10 or rw < 10:
+        return []
+
+    gray = cv2.cvtColor(ban_region, cv2.COLOR_BGR2GRAY)
+
+    # Otsu picks a threshold that separates bright icons from dark background.
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # Horizontal-only close repairs gaps from the diagonal X slash within
+    # each icon WITHOUT merging icons across rows (which are stacked in a
+    # 3+2 grid with a small vertical gap).
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 1))
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(
+        closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE,
+    )
+
+    candidates: list[tuple[int, int, int, int, float]] = []
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        if w < min_icon_dim or h < min_icon_dim:
+            continue
+
+        aspect = w / h if h > 0 else 0.0
+        if not (0.55 < aspect < 1.6):
+            continue
+
+        area = float(cv2.contourArea(contour))
+
+        # Skip very small contours (noise / partial slash fragments).
+        if area < 200:
+            continue
+
+        # Use bounding-rect area for size filtering — it's stable across
+        # ban icons because the X slash creates inconsistent internal holes
+        # that make contour area unreliable.
+        rect_area = float(w * h)
+        candidates.append((x, y, w, h, rect_area))
+
+    if not candidates:
+        return []
+
+    # Keep only icons whose area is within 2.5× of the median — removes
+    # stray large/small blobs (e.g. objective counters or border noise).
+    areas = sorted(c[4] for c in candidates)
+    median_area = areas[len(areas) // 2]
+    candidates = [
+        c for c in candidates
+        if 0.4 * median_area < c[4] < 2.5 * median_area
+    ]
+
+    if not candidates:
+        return []
+
+    # Sort into rows then left-to-right within each row.
+    heights = [c[3] for c in candidates]
+    median_h = sorted(heights)[len(heights) // 2]
+    candidates.sort(key=lambda c: c[1])
+
+    rows: list[list[tuple[int, int, int, int, float]]] = []
+    current_row = [candidates[0]]
+    for c in candidates[1:]:
+        if abs(c[1] - current_row[0][1]) < median_h * 0.7:
+            current_row.append(c)
+        else:
+            rows.append(sorted(current_row, key=lambda c: c[0]))
+            current_row = [c]
+    rows.append(sorted(current_row, key=lambda c: c[0]))
+
+    ordered = [c for row in rows for c in row]
+
+    # Crop each icon with a small inset to exclude the dark border frame.
+    crops: list[np.ndarray] = []
+    for x, y, w, h, _ in ordered[:5]:
+        inset = max(2, min(w, h) // 10)
+        crop = ban_region[y + inset : y + h - inset, x + inset : x + w - inset]
+        if crop.size > 0:
+            crops.append(crop)
+
+    return crops
 
 
 def extract_bans(
-    scoreboard: np.ndarray,
-    circles_sorted: np.ndarray,
-    champion_icons: dict,
-    ban_x_start: float = 0.84,
+    full_img: np.ndarray,
+    ban_champion_icons: dict,
 ) -> list[dict]:
     """
-    For each player row, detect and match the ban icon in the rightmost column.
+    Detect banned champions from the BANS + OBJECTIVES panel.
+
+    Works on the **full** screenshot (not the cropped scoreboard) because
+    bans live in a separate panel to the right of the main player grid.
+
+    Pipeline:
+        1. OCR the right portion of the image for "BANS" text (two hits,
+           one per team).
+        2. Extract the region below each header.
+        3. Detect ban icons via contour detection (square shapes only).
+        4. Match each icon against champion portraits using overlay-aware
+           template matching (``match_ban_champion``).
 
     Args:
-        scoreboard:      Full scoreboard BGR image.
-        circles_sorted:  Player icon circles sorted top-to-bottom (N×3 array).
-        champion_icons:  Pre-loaded champion icon dict.
-        ban_x_start:     Fraction of scoreboard width where the ban column begins.
+        full_img:           Full screenshot, BGR.
+        ban_champion_icons: Square champion icons from load_ban_champion_icons.
 
     Returns:
-        List of dicts: [{"team": 1|2, "position": 1-5, "champion": str}]
+        List of dicts ``[{"team": 1|2, "position": 1-5, "champion": str}]``
+        sorted by team then position.
     """
-    sh, sw = scoreboard.shape[:2]
-    bans = []
+    h, w = full_img.shape[:2]
+    ban_sections = _find_ban_sections(full_img)
 
-    for i, circle in enumerate(circles_sorted[:10]):
-        _, y, r = int(circle[0]), int(circle[1]), int(circle[2])
+    all_bans: list[dict] = []
 
-        row_top    = max(0, y - r)
-        row_bottom = min(sh, y + r)
-        row        = scoreboard[row_top:row_bottom, :]
+    for team_idx, section in enumerate(ban_sections[:2]):
+        team = team_idx + 1
 
-        ban_strip = row[:, int(sw * ban_x_start):]
+        # Region below the "BANS" header containing the icon grid.
+        region_top = section["y"] + section["h"] + 2
+        region_left = max(0, section["x"] - 15)
+        region_bottom = min(h, region_top + int(h * 0.12))
+        region_right = min(w, region_left + int(w * 0.25))
 
-        icon = _detect_circle_in_region(ban_strip)
-        if icon is not None:
-            # Ban icons are small and don't have the same coloured ring as
-            # player portraits, so skip the radius shrink (1.0 = no shrink).
-            ban_crop = crop_circle_from_image(ban_strip, np.array(icon, dtype=np.uint16), radius_shrink=1.0)
-            champion, _ = match_champion(ban_crop, champion_icons, top_k=1)
-        else:
-            champion = "Unknown"
+        ban_region = full_img[region_top:region_bottom, region_left:region_right]
+        icon_crops = _detect_ban_icons(ban_region)
 
-        bans.append({
-            "team":     1 if i < 5 else 2,
-            "position": (i % 5) + 1,
-            "champion": champion,
-        })
+        for pos_idx, crop in enumerate(icon_crops[:5]):
+            champion, _ = match_ban_champion(crop, ban_champion_icons, top_k=1)
+            all_bans.append({
+                "team": team,
+                "position": pos_idx + 1,
+                "champion": champion,
+            })
 
-    return bans
+        # Fill remaining slots with "Unknown".
+        for pos_idx in range(len(icon_crops), 5):
+            all_bans.append({
+                "team": team,
+                "position": pos_idx + 1,
+                "champion": "Unknown",
+            })
+
+    # If fewer than 2 team sections were found, pad with unknowns.
+    existing_teams = {b["team"] for b in all_bans}
+    for team in (1, 2):
+        if team not in existing_teams:
+            for pos in range(1, 6):
+                all_bans.append({
+                    "team": team,
+                    "position": pos,
+                    "champion": "Unknown",
+                })
+
+    return sorted(all_bans, key=lambda b: (b["team"], b["position"]))
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +346,7 @@ def main() -> None:
         sys.exit(1)
 
     champion_icons = load_champion_icons(champion_images_dir)
+    ban_champion_icons = load_ban_champion_icons(champion_images_dir)
     if not champion_icons:
         print(json.dumps({"error": "No champion images loaded — check data/champion_images/"}))
         sys.exit(1)
@@ -258,7 +402,7 @@ def main() -> None:
         })
 
     # ── Bans (best-effort) ───────────────────────────────────────────────────
-    bans = extract_bans(scoreboard, circles_sorted, champion_icons)
+    bans = extract_bans(img, ban_champion_icons)
 
     print(json.dumps({
         "winning_team": winning_team,

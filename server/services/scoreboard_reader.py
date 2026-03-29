@@ -150,6 +150,35 @@ def create_circular_icon(
     return cv2.cvtColor(circular_bgr, cv2.COLOR_BGR2RGB)
 
 
+def create_square_icon(
+    path: str,
+    center_crop_frac: float = TEMPLATE_CENTER_CROP,
+) -> np.ndarray:
+    """
+    Load a champion portrait and return it as a square RGB image.
+
+    Unlike create_circular_icon, no circular mask is applied.  This is
+    suitable for matching against ban icons which are displayed as squares
+    in the post-game lobby.
+
+    Args:
+        path:             Path to the champion .png file.
+        center_crop_frac: Fraction of the image centre to keep.
+
+    Returns:
+        H×W×3 uint8 array (RGB).
+    """
+    img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+    h, w = img.shape[:2]
+
+    if center_crop_frac < 1.0:
+        margin_y = int(h * (1.0 - center_crop_frac) / 2)
+        margin_x = int(w * (1.0 - center_crop_frac) / 2)
+        img = img[margin_y:h - margin_y, margin_x:w - margin_x].copy()
+
+    return img
+
+
 def load_champion_icons(directory: str = CHAMPION_IMAGES_DIR) -> dict[str, np.ndarray]:
     """
     Load every champion portrait from `directory` as a circular RGB icon.
@@ -162,6 +191,24 @@ def load_champion_icons(directory: str = CHAMPION_IMAGES_DIR) -> dict[str, np.nd
         if filename.endswith(".png"):
             name = os.path.splitext(filename)[0]
             icons[name] = create_circular_icon(os.path.join(directory, filename))
+    return icons
+
+
+def load_ban_champion_icons(directory: str = CHAMPION_IMAGES_DIR) -> dict[str, np.ndarray]:
+    """
+    Load every champion portrait from `directory` as a square RGB icon.
+
+    Unlike load_champion_icons (circular), these are square images suitable
+    for matching against ban icons in the BANS + OBJECTIVES section.
+
+    Returns:
+        Dict mapping champion name → H×W×3 uint8 array (RGB).
+    """
+    icons = {}
+    for filename in os.listdir(directory):
+        if filename.endswith(".png"):
+            name = os.path.splitext(filename)[0]
+            icons[name] = create_square_icon(os.path.join(directory, filename))
     return icons
 
 
@@ -505,6 +552,104 @@ def match_champion(
         # provides a stable signal when pixel alignment is slightly off.
         # For greyscale (dead) icons, NCC gets more weight since colour is absent.
         scores[name] = ncc_weight * ncc + hist_weight * hist_score
+
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    return ranked[0][0], ranked[:top_k]
+
+
+def match_ban_champion(
+    ban_crop: np.ndarray,
+    champion_icons: dict[str, np.ndarray],
+    top_k: int = 5,
+) -> tuple[str, list[tuple[str, float]]]:
+    """
+    Match a ban icon crop against champion portraits with overlay-aware logic.
+
+    Ban icons have a gray diagonal X/slash overlay that partially obscures
+    the champion portrait.  This function handles the overlay by:
+
+    1. Building a saturation-based mask to exclude gray overlay pixels
+       (the overlay is achromatic while champion portraits are colourful).
+    2. Weighting HSV histogram correlation (70 %) more heavily than masked
+       NCC (30 %), because the overlay disrupts pixel-level alignment but
+       preserves the champion's overall colour palette.
+    3. Using square templates (no circular masking) since ban icons are square.
+
+    Args:
+        ban_crop:        BGR colour crop of a single ban icon.
+        champion_icons:  Dict mapping name → square RGB icon.
+        top_k:           Number of top candidates to return.
+
+    Returns:
+        (best_match_name, [(name, score), ...]) sorted descending by score.
+    """
+    if ban_crop is None or ban_crop.size == 0:
+        return "Unknown", [("Unknown", 0.0)]
+
+    canonical = cv2.resize(
+        ban_crop, (MATCH_SIZE, MATCH_SIZE), interpolation=cv2.INTER_AREA,
+    )
+    canonical_hsv = cv2.cvtColor(canonical, cv2.COLOR_BGR2HSV)
+
+    saturation = canonical_hsv[:, :, 1]
+    value = canonical_hsv[:, :, 2]
+
+    # Keep pixels with meaningful colour: excludes gray overlay (low S)
+    # and dark border / background (low V).
+    color_mask = ((saturation > 25) & (value > 35)).astype(np.uint8) * 255
+
+    # If barely any colourful pixels survive (very muted icon), fall back
+    # to a brightness-only mask so we still have something to compare.
+    mask_coverage = float(np.count_nonzero(color_mask)) / float(color_mask.size)
+    if mask_coverage < 0.10:
+        color_mask = (value > 25).astype(np.uint8) * 255
+
+    channel_ranges: list[list[float]] = [[0, 180], [0, 256], [0, 256]]
+    scores: dict[str, float] = {}
+
+    for name, icon_rgb in champion_icons.items():
+        icon_bgr = cv2.cvtColor(icon_rgb, cv2.COLOR_RGB2BGR)
+        template = cv2.resize(
+            icon_bgr, (MATCH_SIZE, MATCH_SIZE), interpolation=cv2.INTER_AREA,
+        )
+
+        template_hsv = cv2.cvtColor(template, cv2.COLOR_BGR2HSV)
+        tmpl_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        _, tmpl_mask = cv2.threshold(tmpl_gray, 5, 255, cv2.THRESH_BINARY)
+
+        shared_mask = cv2.bitwise_and(color_mask, tmpl_mask)
+
+        # ── 1. HSV histogram correlation (primary signal) ────────────────
+        hist_score = 0.0
+        channel_bins = [16, 8, 8]  # H, S, V
+        for ch, bins in enumerate(channel_bins):
+            h1 = cv2.calcHist(
+                [canonical_hsv], [ch], shared_mask, [bins], channel_ranges[ch],
+            )
+            h2 = cv2.calcHist(
+                [template_hsv], [ch], shared_mask, [bins], channel_ranges[ch],
+            )
+            cv2.normalize(h1, h1)
+            cv2.normalize(h2, h2)
+            hist_score += cv2.compareHist(h1, h2, cv2.HISTCMP_CORREL)
+        hist_score /= len(channel_bins)
+
+        # ── 2. Masked NCC (secondary signal) ─────────────────────────────
+        # Zero out overlay pixels in both images so the gray slash doesn't
+        # dominate the correlation.
+        masked_crop = canonical.copy()
+        masked_crop[color_mask == 0] = 0
+        masked_tmpl = template.copy()
+        masked_tmpl[color_mask == 0] = 0
+
+        ncc = float(
+            cv2.matchTemplate(
+                masked_crop, masked_tmpl, cv2.TM_CCOEFF_NORMED,
+            )[0][0]
+        )
+
+        # Histogram-heavy blend: the overlay makes pixel-level NCC noisy.
+        scores[name] = 0.30 * ncc + 0.70 * hist_score
 
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     return ranked[0][0], ranked[:top_k]
