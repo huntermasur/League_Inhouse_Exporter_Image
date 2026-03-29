@@ -57,6 +57,17 @@ export function saveGame(
   });
 }
 
+export function updateGame(
+  id: string,
+  parsed: ParsedGame,
+): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/games/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ parsed }),
+  });
+}
+
 // ── Champions ─────────────────────────────────────────────────────────────────
 
 export function fetchChampions(): Promise<string[]> {

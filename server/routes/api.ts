@@ -10,6 +10,7 @@ import {
   getGameById,
   insertGame,
   deleteGame,
+  updateGame,
   getPlayerGameStats,
   getChampionKdaStats,
   getChampionPickStats,
@@ -61,6 +62,43 @@ router.get("/games/:id", (req, res) => {
     return;
   }
   res.json(game);
+});
+
+// PATCH /api/games/:id  — update an existing game's data
+router.patch("/games/:id", (req, res) => {
+  const { parsed } = req.body as { parsed: unknown };
+
+  if (!parsed || typeof parsed !== "object") {
+    res.status(400).json({ error: "Missing parsed game data" });
+    return;
+  }
+
+  const data = parsed as {
+    winning_team: 1 | 2;
+    players: {
+      team: 1 | 2;
+      position: 1 | 2 | 3 | 4 | 5;
+      username: string;
+      champion: string;
+      kills: number;
+      deaths: number;
+      assists: number;
+    }[];
+    bans: { team: 1 | 2; position: 1 | 2 | 3 | 4 | 5; champion: string }[];
+  };
+
+  const updated = updateGame(req.params.id, {
+    winning_team: data.winning_team,
+    players: data.players,
+    bans: data.bans,
+  });
+
+  if (!updated) {
+    res.status(404).json({ error: "Game not found" });
+    return;
+  }
+
+  res.json({ id: req.params.id });
 });
 
 // DELETE /api/games/:id

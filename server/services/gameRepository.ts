@@ -98,6 +98,61 @@ export function deleteGame(id: string): boolean {
   return result.changes > 0;
 }
 
+interface UpdateGameInput {
+  winning_team: 1 | 2;
+  players: Omit<Player, "id" | "game_id" | "role">[];
+  bans: Omit<Ban, "id" | "game_id">[];
+}
+
+export function updateGame(id: string, input: UpdateGameInput): boolean {
+  const updateGameStmt = db.prepare(
+    "UPDATE games SET winning_team = ? WHERE id = ?",
+  );
+
+  const deletePlayersStmt = db.prepare("DELETE FROM players WHERE game_id = ?");
+
+  const deleteBansStmt = db.prepare("DELETE FROM bans WHERE game_id = ?");
+
+  const insertPlayerStmt = db.prepare(
+    "INSERT INTO players (game_id, team, position, username, champion, kills, deaths, assists) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  );
+
+  const insertBanStmt = db.prepare(
+    "INSERT INTO bans (game_id, team, position, champion) VALUES (?, ?, ?, ?)",
+  );
+
+  let changed = false;
+
+  const run = db.transaction(() => {
+    const result = updateGameStmt.run(input.winning_team, id);
+    if (result.changes === 0) return;
+
+    changed = true;
+    deletePlayersStmt.run(id);
+    deleteBansStmt.run(id);
+
+    for (const p of input.players) {
+      insertPlayerStmt.run(
+        id,
+        p.team,
+        p.position,
+        p.username,
+        p.champion,
+        p.kills,
+        p.deaths,
+        p.assists,
+      );
+    }
+
+    for (const b of input.bans) {
+      insertBanStmt.run(id, b.team, b.position, b.champion);
+    }
+  });
+
+  run();
+  return changed;
+}
+
 // ── Stats ────────────────────────────────────────────────────────────────────
 
 export function getPlayerGameStats(): PlayerGameStat[] {
