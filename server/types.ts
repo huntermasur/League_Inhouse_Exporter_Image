@@ -27,6 +27,7 @@ export interface Game {
   id: string;
   created_at: string;
   winning_team: 1 | 2;
+  image_filename: string | null;
 }
 
 export interface GameDetail extends Game {

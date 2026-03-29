@@ -16,6 +16,14 @@
   font-size: 0.9rem;
 }
 
+.screenshot {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #1e2030;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+
 .winnerRow {
   display: flex;
   align-items: center;
@@ -128,6 +136,10 @@
 
 .banInput {
   width: 140px;
+}
+
+.banSelectWrap {
+  width: 160px;
 }
 
 .actions {

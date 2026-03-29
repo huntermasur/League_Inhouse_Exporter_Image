@@ -18,6 +18,7 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, "..", "..", "data", "uploads");
+const CHAMPION_IMAGES_DIR = path.join(__dirname, "..", "..", "data", "champion_images");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const upload = multer({
@@ -113,16 +114,26 @@ router.post("/games", (req, res) => {
   insertGame({
     id,
     winning_team: data.winning_team,
+    image_filename: tempFile ?? null,
     players: data.players,
     bans: data.bans,
   });
 
-  // Clean up temp file after saving
-  if (tempFile) {
-    fs.unlink(path.join(UPLOADS_DIR, tempFile), () => {});
-  }
+  // Temp file is now the permanent game image — do not delete it.
 
   res.status(201).json({ id });
+});
+
+// ── Champions ─────────────────────────────────────────────────────────────────
+
+// GET /api/champions — list of all champion names derived from local icon files
+router.get("/champions", (_req, res) => {
+  const files = fs.readdirSync(CHAMPION_IMAGES_DIR);
+  const champions = files
+    .filter((f) => f.endsWith(".png"))
+    .map((f) => f.replace(/\.png$/, ""))
+    .sort();
+  res.json(champions);
 });
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

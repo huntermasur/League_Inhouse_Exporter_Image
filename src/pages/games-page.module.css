@@ -127,6 +127,14 @@
   padding-top: 2rem;
 }
 
+.screenshot {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #1e2030;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+
 .detailHeading {
   font-size: 1rem;
   color: #8b9bb4;

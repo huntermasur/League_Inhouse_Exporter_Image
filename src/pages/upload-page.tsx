@@ -73,6 +73,7 @@ export function UploadPage() {
     return (
       <ParsedPreview
         parsed={parsed}
+        tempFile={tempFile}
         onChange={setParsed}
         onConfirm={handleConfirm}
         onCancel={handleReset}

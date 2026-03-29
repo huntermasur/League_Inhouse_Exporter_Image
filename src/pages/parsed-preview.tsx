@@ -1,10 +1,14 @@
+import { useState, useEffect } from "react";
 import type { ParsedGame, ParsedPlayer } from "@/types";
+import { fetchChampions } from "../shared/api.js";
+import { ChampionSelect } from "../shared/components/champion-select.js";
 import styles from "./parsed-preview.module.css";
 
 const POSITIONS = ["Top", "Jungle", "Mid", "Bot", "Support"] as const;
 
 interface Props {
   parsed: ParsedGame;
+  tempFile: string;
   onChange: (game: ParsedGame) => void;
   onConfirm: (game: ParsedGame) => void;
   onCancel: () => void;
@@ -13,11 +17,21 @@ interface Props {
 
 export function ParsedPreview({
   parsed,
+  tempFile,
   onChange,
   onConfirm,
   onCancel,
   saving,
 }: Props) {
+  const [champions, setChampions] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchChampions()
+      .then(setChampions)
+      .catch(() => {
+        /* non-fatal — inputs still work as free-text fallback */
+      });
+  }, []);
   function updatePlayer(
     idx: number,
     field: keyof ParsedPlayer,
@@ -48,6 +62,12 @@ export function ParsedPreview({
       <p className={styles.sub}>
         Check and correct anything Gemini may have misread before saving.
       </p>
+
+      <img
+        src={`/uploads/${tempFile}`}
+        alt="Uploaded postgame screenshot"
+        className={styles.screenshot}
+      />
 
       <div className={styles.winnerRow}>
         <label className={styles.label}>Winning team</label>
@@ -109,11 +129,11 @@ export function ParsedPreview({
                         />
                       </td>
                       <td>
-                        <input
-                          className={styles.input}
+                        <ChampionSelect
                           value={p.champion}
-                          onChange={(e) =>
-                            updatePlayer(globalIdx, "champion", e.target.value)
+                          champions={champions}
+                          onChange={(val) =>
+                            updatePlayer(globalIdx, "champion", val)
                           }
                           aria-label={`Champion for ${POSITIONS[p.position - 1]}`}
                         />
@@ -147,13 +167,14 @@ export function ParsedPreview({
               {bans.map((b) => {
                 const globalIdx = parsed.bans.indexOf(b);
                 return (
-                  <input
-                    key={globalIdx}
-                    className={`${styles.input} ${styles.banInput}`}
-                    value={b.champion}
-                    onChange={(e) => updateBan(globalIdx, e.target.value)}
-                    aria-label={`Ban ${b.position} for team ${team}`}
-                  />
+                  <div key={globalIdx} className={styles.banSelectWrap}>
+                    <ChampionSelect
+                      value={b.champion}
+                      champions={champions}
+                      onChange={(val) => updateBan(globalIdx, val)}
+                      aria-label={`Ban ${b.position} for team ${team}`}
+                    />
+                  </div>
                 );
               })}
             </div>

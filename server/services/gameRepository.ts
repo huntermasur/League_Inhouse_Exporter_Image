@@ -15,14 +15,14 @@ import type {
 export function getAllGames(): Game[] {
   return db
     .prepare(
-      "SELECT id, created_at, winning_team FROM games ORDER BY created_at DESC",
+      "SELECT id, created_at, winning_team, image_filename FROM games ORDER BY created_at DESC",
     )
     .all() as Game[];
 }
 
 export function getGameById(id: string): GameDetail | undefined {
   const game = db
-    .prepare("SELECT id, created_at, winning_team FROM games WHERE id = ?")
+    .prepare("SELECT id, created_at, winning_team, image_filename FROM games WHERE id = ?")
     .get(id) as Game | undefined;
   if (!game) return undefined;
 
@@ -40,13 +40,14 @@ export function getGameById(id: string): GameDetail | undefined {
 interface InsertGameInput {
   id: string;
   winning_team: 1 | 2;
+  image_filename: string | null;
   players: Omit<Player, "id" | "game_id">[];
   bans: Omit<Ban, "id" | "game_id">[];
 }
 
 export function insertGame(input: InsertGameInput): void {
   const insertGameStmt = db.prepare(
-    "INSERT INTO games (id, winning_team) VALUES (?, ?)",
+    "INSERT INTO games (id, winning_team, image_filename) VALUES (?, ?, ?)",
   );
 
   const insertPlayerStmt = db.prepare(
@@ -58,7 +59,7 @@ export function insertGame(input: InsertGameInput): void {
   );
 
   const run = db.transaction(() => {
-    insertGameStmt.run(input.id, input.winning_team);
+    insertGameStmt.run(input.id, input.winning_team, input.image_filename);
 
     for (const p of input.players) {
       insertPlayerStmt.run(

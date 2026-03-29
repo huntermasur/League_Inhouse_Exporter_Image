@@ -17,9 +17,10 @@ db.pragma("foreign_keys = ON");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS games (
-    id          TEXT PRIMARY KEY,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    winning_team INTEGER NOT NULL CHECK (winning_team IN (1, 2))
+    id             TEXT PRIMARY KEY,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    winning_team   INTEGER NOT NULL CHECK (winning_team IN (1, 2)),
+    image_filename TEXT
   );
 
   CREATE TABLE IF NOT EXISTS players (
@@ -44,3 +45,13 @@ db.exec(`
 `);
 
 export default db;
+
+// ── Migrations ────────────────────────────────────────────────────────────────
+// Runs once at startup; safe to call against an already-migrated database.
+
+const existingColumns = (db.pragma("table_info(games)") as { name: string }[]).map(
+  (c) => c.name,
+);
+if (!existingColumns.includes("image_filename")) {
+  db.exec("ALTER TABLE games ADD COLUMN image_filename TEXT");
+}

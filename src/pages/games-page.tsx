@@ -127,6 +127,14 @@ export function GamesPage() {
             Game <code>{selected.id.slice(0, 8)}…</code>
           </h2>
 
+          {selected.image_filename && (
+            <img
+              src={`/uploads/${selected.image_filename}`}
+              alt="Postgame screenshot"
+              className={styles.screenshot}
+            />
+          )}
+
           {([1, 2] as const).map((team) => {
             const players = selected.players.filter((p) => p.team === team);
             const bans = selected.bans.filter((b) => b.team === team);

@@ -54,6 +54,12 @@ export function saveGame(
   });
 }
 
+// ── Champions ─────────────────────────────────────────────────────────────────
+
+export function fetchChampions(): Promise<string[]> {
+  return request<string[]>("/api/champions");
+}
+
 // ── Stats ────────────────────────────────────────────────────────────────────
 
 export function fetchPlayerStats(): Promise<PlayerGameStat[]> {
