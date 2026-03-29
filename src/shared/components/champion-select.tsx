@@ -13,7 +13,12 @@ interface Props {
  * Filters the champion list as the user types and shows an icon next to each
  * match. Selecting a champion closes the dropdown and fills the field.
  */
-export function ChampionSelect({ value, champions, onChange, "aria-label": ariaLabel }: Props) {
+export function ChampionSelect({
+  value,
+  champions,
+  onChange,
+  "aria-label": ariaLabel,
+}: Props) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -81,7 +86,10 @@ export function ChampionSelect({ value, champions, onChange, "aria-label": ariaL
   // Close dropdown on outside click
   useEffect(() => {
     function handlePointerDown(e: PointerEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -97,7 +105,9 @@ export function ChampionSelect({ value, champions, onChange, "aria-label": ariaL
         aria-autocomplete="list"
         aria-expanded={open}
         aria-controls={listId}
-        aria-activedescendant={activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined}
+        aria-activedescendant={
+          activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined
+        }
         aria-label={ariaLabel}
         className={styles.input}
         value={query}

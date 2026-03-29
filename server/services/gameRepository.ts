@@ -22,7 +22,9 @@ export function getAllGames(): Game[] {
 
 export function getGameById(id: string): GameDetail | undefined {
   const game = db
-    .prepare("SELECT id, created_at, winning_team, image_filename FROM games WHERE id = ?")
+    .prepare(
+      "SELECT id, created_at, winning_team, image_filename FROM games WHERE id = ?",
+    )
     .get(id) as Game | undefined;
   if (!game) return undefined;
 

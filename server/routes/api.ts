@@ -18,7 +18,13 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, "..", "..", "data", "uploads");
-const CHAMPION_IMAGES_DIR = path.join(__dirname, "..", "..", "data", "champion_images");
+const CHAMPION_IMAGES_DIR = path.join(
+  __dirname,
+  "..",
+  "..",
+  "data",
+  "champion_images",
+);
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const upload = multer({
