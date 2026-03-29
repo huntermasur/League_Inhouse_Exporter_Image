@@ -159,9 +159,7 @@ export function GamesPage() {
                   <tbody>
                     {players.map((p) => (
                       <tr key={p.id}>
-                        <td className={styles.role}>
-                          {p.role}
-                        </td>
+                        <td className={styles.role}>{p.role}</td>
                         <td>{p.username}</td>
                         <td className={styles.champion}>{p.champion}</td>
                         <td className={styles.k}>{p.kills}</td>
