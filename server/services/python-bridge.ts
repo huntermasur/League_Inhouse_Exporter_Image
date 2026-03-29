@@ -1,11 +1,13 @@
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import type { ParsedGame } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Project root is two levels up from server/services/
 const PROJECT_ROOT = path.resolve(__dirname, "..", "..");
 const SCRIPT_PATH = path.join(__dirname, "get_champion_hints.py");
+const PARSE_SCRIPT_PATH = path.join(__dirname, "parse_scoreboard.py");
 const TIMEOUT_MS = 90_000;
 
 export interface ChampionHint {
@@ -100,6 +102,84 @@ export async function getChampionHints(
       clearTimeout(timer);
       console.warn("[champion-hints] Could not start Python:", err.message);
       resolve(null);
+    });
+  });
+}
+
+/**
+ * Runs the full local parsing pipeline against the given screenshot.
+ *
+ * Spawns parse_scoreboard.py which uses template matching + OCR to extract:
+ *   - Champion names (template matching against DDragon portraits)
+ *   - Player names and K/D/A (Tesseract OCR)
+ *   - Winning team (OCR for VICTORY/DEFEAT)
+ *   - Ban icons (per-row Hough detection + template matching, best-effort)
+ *
+ * Throws on failure, so callers can surface a 500 error to the client.
+ */
+export async function parseScoreboardLocally(
+  imagePath: string,
+): Promise<ParsedGame> {
+  return new Promise((resolve, reject) => {
+    const python = spawn("python", [PARSE_SCRIPT_PATH, imagePath], {
+      cwd: PROJECT_ROOT,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    const timer = setTimeout(() => {
+      python.kill();
+      reject(
+        new Error(
+          "Local parser timed out. The screenshot may be unusually large or complex.",
+        ),
+      );
+    }, TIMEOUT_MS);
+
+    python.stdout.on("data", (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    python.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    python.on("close", () => {
+      clearTimeout(timer);
+
+      if (!stdout.trim()) {
+        reject(
+          new Error(
+            `Parser produced no output. Stderr: ${stderr.slice(0, 500)}`,
+          ),
+        );
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stdout.trim());
+
+        if (parsed?.error) {
+          reject(new Error(parsed.error));
+          return;
+        }
+
+        resolve(parsed as ParsedGame);
+      } catch {
+        reject(
+          new Error(`Failed to parse script output: ${stdout.slice(0, 200)}`),
+        );
+      }
+    });
+
+    python.on("error", (err) => {
+      clearTimeout(timer);
+      reject(
+        new Error(
+          `Could not start Python: ${err.message}. Ensure Python is installed with opencv-python, pytesseract, and numpy.`,
+        ),
+      );
     });
   });
 }

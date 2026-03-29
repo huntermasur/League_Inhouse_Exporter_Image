@@ -69,6 +69,22 @@ EXPECTED_CIRCLE_COUNT = 10
 # This eliminates errors caused by imprecise Hough radius detection.
 MATCH_SIZE = 64
 
+# Fraction of the detected Hough radius to keep when cropping a champion icon.
+# The in-game scoreboard draws a coloured border ring (gold/blue/red) around
+# each portrait.  Shrinking the crop radius excludes those ring pixels so they
+# don't pollute template matching against ring-free Data Dragon portraits.
+CROP_RADIUS_SHRINK = 0.88
+
+# Canonical width (pixels) that the scoreboard region is resized to before
+# circle detection.  Normalising resolution makes the fixed Hough parameter
+# grid work across 1080p, 1440p, 4K, and windowed-mode screenshots.
+CANONICAL_SCOREBOARD_WIDTH = 1200
+
+# Data Dragon portraits are square, but the in-game scoreboard zooms/crops
+# them into a tighter circle.  This fraction controls how much of the
+# template centre to keep, mimicking the game's zoom level.
+TEMPLATE_CENTER_CROP = 0.85
+
 
 # ---------------------------------------------------------------------------
 # Icon helpers
@@ -78,6 +94,7 @@ def create_circular_icon(
     path: str,
     ring_color: tuple[int, int, int] = ICON_RING_COLOR,
     ring_thickness: int = 0,
+    center_crop_frac: float = TEMPLATE_CENTER_CROP,
 ) -> np.ndarray:
     """
     Load a champion portrait and return it as an RGB circle.
@@ -87,16 +104,30 @@ def create_circular_icon(
     so adding a ring to templates actively hurts template-matching accuracy.
     Pass ring_thickness > 0 only for visualisation purposes.
 
+    center_crop_frac controls how much of the portrait centre to keep before
+    masking to a circle.  The in-game scoreboard zooms champion icons tighter
+    than the full Data Dragon square, so cropping the outer edges of the
+    template reduces mismatch from portrait content the game never shows.
+
     Args:
-        path:           Path to the champion .png file.
-        ring_color:     RGB tuple for the border ring (ignored when thickness=0).
-        ring_thickness: Pixel width of the border ring (0 = no ring).
+        path:             Path to the champion .png file.
+        ring_color:       RGB tuple for the border ring (ignored when thickness=0).
+        ring_thickness:   Pixel width of the border ring (0 = no ring).
+        center_crop_frac: Fraction of the image to keep (0.85 = inner 85%).
 
     Returns:
         H×W×3 uint8 array (RGB).
     """
     img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
     h, w = img.shape[:2]
+
+    # Centre-crop the square portrait to approximate the in-game zoom level.
+    if center_crop_frac < 1.0:
+        margin_y = int(h * (1.0 - center_crop_frac) / 2)
+        margin_x = int(w * (1.0 - center_crop_frac) / 2)
+        img = img[margin_y:h - margin_y, margin_x:w - margin_x].copy()
+        h, w = img.shape[:2]
+
     center = (w // 2, h // 2)
     radius = min(h, w) // 2
 
@@ -156,13 +187,38 @@ def find_scoreboard_region(img: np.ndarray, padding: int = 5) -> np.ndarray:
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     ocr_data = pytesseract.image_to_data(img_rgb, output_type=pytesseract.Output.DICT)
 
+    scoreboard_y: Optional[int] = None
     for i, text in enumerate(ocr_data["text"]):
         if "scoreboard" in text.lower():
             y = ocr_data["top"][i]
-            h = ocr_data["height"][i]
-            return img[y + h + padding:, :]
+            h_text = ocr_data["height"][i]
+            scoreboard_y = y + h_text + padding
+            break
 
-    raise ValueError("Could not locate 'Scoreboard' text in the image.")
+    if scoreboard_y is None:
+        raise ValueError("Could not locate 'Scoreboard' text in the image.")
+
+    cropped = img[scoreboard_y:, :]
+
+    # Detect the right boundary of the scoreboard area to exclude side
+    # panels (e.g. the Social/Friends list).  The scoreboard sits on a
+    # darker background; we look for a vertical brightness edge in the
+    # upper portion of the cropped region.
+    probe_h = min(60, cropped.shape[0])
+    probe_strip = cv2.cvtColor(cropped[:probe_h, :], cv2.COLOR_BGR2GRAY)
+    col_brightness = np.mean(probe_strip, axis=0)
+
+    # Walk from the right edge inward until brightness rises above the
+    # dark-background threshold — that marks the scoreboard boundary.
+    # If the entire strip is fairly uniform (no side panel), keep full width.
+    right_edge = cropped.shape[1]
+    threshold = np.mean(col_brightness) * 0.45
+    for col_x in range(len(col_brightness) - 1, int(len(col_brightness) * 0.6), -1):
+        if col_brightness[col_x] > threshold and col_brightness[col_x - 1] < threshold:
+            right_edge = col_x
+            break
+
+    return cropped[:, :right_edge]
 
 
 # ---------------------------------------------------------------------------
@@ -220,26 +276,41 @@ def find_circles_by_param_search(
     param_grid: dict[str, range] = HOUGH_PARAM_GRID,
     target_count: int = EXPECTED_CIRCLE_COUNT,
     early_stop: int = EARLY_STOP_COUNT,
+    canonical_width: int = CANONICAL_SCOREBOARD_WIDTH,
 ) -> np.ndarray:
     """
     Brute-force Hough parameters to reliably find `target_count` circles.
+
+    The image is first resized to `canonical_width` so the fixed Hough
+    parameter grid works across any input resolution (1080p, 1440p, 4K,
+    windowed mode, etc.).  Detected circles are then scaled back to the
+    original pixel space.
 
     Iterates over every combination in `param_grid`, collects runs that
     returned the right number of circles, then picks the most geometrically
     uniform group (consistent x-positions and radii).
 
     Args:
-        img:          BGR image to search.
-        param_grid:   Dict of parameter name → range of values to try.
-        target_count: Expected number of circles (default: 10 players).
-        early_stop:   Return early once this many exact-count solutions exist.
+        img:             BGR image to search.
+        param_grid:      Dict of parameter name → range of values to try.
+        target_count:    Expected number of circles (default: 10 players).
+        early_stop:      Return early once this many exact-count solutions exist.
+        canonical_width: Width to normalise the image to before detection.
 
     Returns:
-        Array of shape (target_count, 3) — (x, y, radius) per circle.
+        Array of shape (target_count, 3) — (x, y, radius) per circle,
+        in the coordinate space of the *original* image.
 
     Raises:
         ValueError: If no valid configuration is found.
     """
+    orig_h, orig_w = img.shape[:2]
+    scale = orig_w / canonical_width
+    canonical_h = int(orig_h / scale)
+    search_img = cv2.resize(
+        img, (canonical_width, canonical_h), interpolation=cv2.INTER_AREA
+    )
+
     all_combinations = [
         dict(zip(param_grid, values))
         for values in product(*param_grid.values())
@@ -250,7 +321,7 @@ def find_circles_by_param_search(
 
     for params in all_combinations:
         try:
-            circles = detect_circles(img, **params)
+            circles = detect_circles(search_img, **params)
         except ValueError:
             continue
 
@@ -268,7 +339,11 @@ def find_circles_by_param_search(
             f"Could not find {target_count} circles in any parameter combination."
         )
 
-    return _most_uniform_group(candidates)
+    best = _most_uniform_group(candidates)
+
+    # Scale circle coordinates back to original image resolution.
+    scaled = np.float64(best) * scale
+    return np.uint16(np.around(scaled))
 
 
 # ---------------------------------------------------------------------------
@@ -290,16 +365,49 @@ def _apply_circular_mask(img: np.ndarray) -> np.ndarray:
     return out
 
 
-def crop_circle_from_image(img: np.ndarray, circle: np.ndarray) -> np.ndarray:
+def crop_circle_from_image(
+    img: np.ndarray,
+    circle: np.ndarray,
+    radius_shrink: float = CROP_RADIUS_SHRINK,
+) -> np.ndarray:
     """
     Crop the bounding square of a detected circle from `img`, then zero out
     the corners outside the circle so background pixels don't influence matching.
 
+    The crop radius is shrunk by `radius_shrink` (default 0.88) to exclude the
+    coloured border ring that the in-game scoreboard draws around each icon.
+
+    Coordinates are clamped to image bounds so edge players don't produce
+    undersized or empty crops.
+
     Returns:
-        BGR uint8 array of size (2r × 2r) with corners masked to black.
+        BGR uint8 array of size (2r' × 2r') with corners masked to black.
     """
     x, y, r = int(circle[0]), int(circle[1]), int(circle[2])
-    crop = img[y - r: y + r, x - r: x + r].copy()
+    r = max(1, int(r * radius_shrink))
+
+    ih, iw = img.shape[:2]
+    y1 = max(0, y - r)
+    y2 = min(ih, y + r)
+    x1 = max(0, x - r)
+    x2 = min(iw, x + r)
+
+    crop = img[y1:y2, x1:x2].copy()
+
+    # If edge clamping produced a non-square crop, pad with black to restore
+    # the expected (2r × 2r) size so the circular mask aligns correctly.
+    ch, cw = crop.shape[:2]
+    target = 2 * r
+    if ch != target or cw != target:
+        padded = np.zeros((target, target, 3), dtype=np.uint8) if crop.ndim == 3 \
+            else np.zeros((target, target), dtype=np.uint8)
+        # Offset = how many pixels were clipped on the top / left side.
+        # Place the crop at that offset so the portrait content stays centred.
+        oy = y1 - (y - r)  # >0 when top was clamped
+        ox = x1 - (x - r)  # >0 when left was clamped
+        padded[oy:oy + ch, ox:ox + cw] = crop
+        crop = padded
+
     return _apply_circular_mask(crop)
 
 
@@ -343,6 +451,19 @@ def match_champion(
 
     canonical_hsv = cv2.cvtColor(canonical, cv2.COLOR_BGR2HSV)
 
+    # Detect whether the crop is greyscale (dead champion) by checking
+    # saturation.  If the icon is desaturated, boost the NCC weight
+    # because the colour histogram becomes unreliable.
+    mean_saturation = float(cv2.mean(canonical_hsv[:, :, 1], mask=crop_mask)[0])
+    is_greyscale = mean_saturation < 25  # dead champions have near-zero saturation
+
+    ncc_weight = 0.80 if is_greyscale else 0.55
+    hist_weight = 1.0 - ncc_weight
+
+    # Correct histogram ranges per HSV channel:
+    # OpenCV uses H: 0-179, S: 0-255, V: 0-255
+    channel_ranges: list[list[float]] = [[0, 180], [0, 256], [0, 256]]
+
     scores: dict[str, float] = {}
 
     for name, icon_rgb in champion_icons.items():
@@ -354,7 +475,14 @@ def match_champion(
         template = _apply_circular_mask(template)
 
         # ── 1. Normalised cross-correlation ──────────────────────────────────
-        ncc = float(cv2.matchTemplate(canonical, template, cv2.TM_CCOEFF_NORMED)[0][0])
+        # When the crop is greyscale (dead champion), convert the template to
+        # greyscale too so NCC compares luminance patterns without colour bias.
+        if is_greyscale:
+            crop_gray_ncc = cv2.cvtColor(canonical, cv2.COLOR_BGR2GRAY)
+            tmpl_gray_ncc = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+            ncc = float(cv2.matchTemplate(crop_gray_ncc, tmpl_gray_ncc, cv2.TM_CCOEFF_NORMED)[0][0])
+        else:
+            ncc = float(cv2.matchTemplate(canonical, template, cv2.TM_CCOEFF_NORMED)[0][0])
 
         # ── 2. HSV histogram correlation ─────────────────────────────────────
         template_hsv = cv2.cvtColor(template, cv2.COLOR_BGR2HSV)
@@ -366,8 +494,8 @@ def match_champion(
         # H (hue) gets more bins — it's the most discriminative channel.
         channel_bins = [16, 8, 8]  # H, S, V
         for ch, bins in enumerate(channel_bins):
-            h1 = cv2.calcHist([canonical_hsv], [ch], shared_mask, [bins], [0, 256])
-            h2 = cv2.calcHist([template_hsv],  [ch], shared_mask, [bins], [0, 256])
+            h1 = cv2.calcHist([canonical_hsv], [ch], shared_mask, [bins], channel_ranges[ch])
+            h2 = cv2.calcHist([template_hsv],  [ch], shared_mask, [bins], channel_ranges[ch])
             cv2.normalize(h1, h1)
             cv2.normalize(h2, h2)
             hist_score += cv2.compareHist(h1, h2, cv2.HISTCMP_CORREL)
@@ -375,7 +503,8 @@ def match_champion(
 
         # Weighted blend: NCC is precise when alignment is good; histogram
         # provides a stable signal when pixel alignment is slightly off.
-        scores[name] = 0.55 * ncc + 0.45 * hist_score
+        # For greyscale (dead) icons, NCC gets more weight since colour is absent.
+        scores[name] = ncc_weight * ncc + hist_weight * hist_score
 
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
     return ranked[0][0], ranked[:top_k]

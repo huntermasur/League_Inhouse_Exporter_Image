@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { parseGameScreenshot } from "../services/gemini.js";
+import { parseScoreboardLocally } from "../services/python-bridge.js";
 import {
   getAllGames,
   getGameById,
@@ -73,34 +73,13 @@ router.post("/games/parse", upload.single("screenshot"), async (req, res) => {
   }
 
   try {
-    const parsed = await parseGameScreenshot(req.file.path);
+    const parsed = await parseScoreboardLocally(req.file.path);
     res.json({ tempFile: req.file.filename, parsed });
   } catch (err) {
     fs.unlink(req.file.path, () => {});
     const message = err instanceof Error ? err.message : String(err);
-    console.error("Gemini parse error:", message);
-
-    if (
-      message.includes("429") ||
-      message.includes("quota") ||
-      message.toLowerCase().includes("too many")
-    ) {
-      res
-        .status(429)
-        .json({
-          error:
-            "Gemini API quota exceeded. Your free-tier daily limit may be exhausted — wait until tomorrow or enable billing at aistudio.google.com.",
-        });
-    } else if (message.includes("API_KEY_INVALID") || message.includes("403")) {
-      res
-        .status(500)
-        .json({
-          error:
-            "Invalid Gemini API key. Generate a new key at aistudio.google.com and update your .env file.",
-        });
-    } else {
-      res.status(500).json({ error: `Failed to parse screenshot: ${message}` });
-    }
+    console.error("Parse error:", message);
+    res.status(500).json({ error: `Failed to parse screenshot: ${message}` });
   }
 });
 
