@@ -1,4 +1,5 @@
 import db from "../db/database.js";
+import { POSITION_TO_ROLE } from "../types.js";
 import type {
   Game,
   GameDetail,
@@ -28,9 +29,13 @@ export function getGameById(id: string): GameDetail | undefined {
     .get(id) as Game | undefined;
   if (!game) return undefined;
 
-  const players = db
+  const rawPlayers = db
     .prepare("SELECT * FROM players WHERE game_id = ? ORDER BY team, position")
-    .all(id) as Player[];
+    .all(id) as Omit<Player, "role">[];
+  const players: Player[] = rawPlayers.map((p) => ({
+    ...p,
+    role: POSITION_TO_ROLE[p.position],
+  }));
 
   const bans = db
     .prepare("SELECT * FROM bans WHERE game_id = ? ORDER BY team, position")
@@ -43,7 +48,8 @@ interface InsertGameInput {
   id: string;
   winning_team: 1 | 2;
   image_filename: string | null;
-  players: Omit<Player, "id" | "game_id">[];
+  // role is derived from position and not stored — omit it from the write path
+  players: Omit<Player, "id" | "game_id" | "role">[];
   bans: Omit<Ban, "id" | "game_id">[];
 }
 

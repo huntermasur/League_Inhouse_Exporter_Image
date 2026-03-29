@@ -1,12 +1,25 @@
 // Shared types between server and client.
 // The client imports from here via path alias.
 
+/** Maps position index (1–5) to its human-readable role name. */
+export const POSITION_TO_ROLE = {
+  1: "Top",
+  2: "Jungle",
+  3: "Mid",
+  4: "Bot",
+  5: "Support",
+} as const;
+
+export type Role = (typeof POSITION_TO_ROLE)[keyof typeof POSITION_TO_ROLE];
+
 export interface Player {
   id: number;
   game_id: string;
   team: 1 | 2;
   /** 1=Top 2=Jungle 3=Mid 4=Bot 5=Support */
   position: 1 | 2 | 3 | 4 | 5;
+  /** Human-readable role derived from position — not stored in DB. */
+  role: Role;
   username: string;
   champion: string;
   kills: number;

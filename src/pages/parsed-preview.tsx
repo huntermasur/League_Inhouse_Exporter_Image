@@ -116,7 +116,24 @@ export function ParsedPreview({
                   return (
                     <tr key={globalIdx}>
                       <td className={styles.role}>
-                        {POSITIONS[p.position - 1]}
+                        <select
+                          className={styles.select}
+                          value={p.position}
+                          onChange={(e) =>
+                            updatePlayer(
+                              globalIdx,
+                              "position",
+                              Number(e.target.value) as 1 | 2 | 3 | 4 | 5,
+                            )
+                          }
+                          aria-label={`Role for ${p.username}`}
+                        >
+                          {POSITIONS.map((role, i) => (
+                            <option key={role} value={i + 1}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <input

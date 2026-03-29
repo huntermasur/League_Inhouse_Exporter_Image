@@ -3,8 +3,6 @@ import type { Game, GameDetail } from "@/types";
 import { fetchGames, fetchGame, deleteGame } from "../shared/api.js";
 import styles from "./games-page.module.css";
 
-const POSITIONS = ["Top", "Jungle", "Mid", "Bot", "Support"] as const;
-
 export function GamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +160,7 @@ export function GamesPage() {
                     {players.map((p) => (
                       <tr key={p.id}>
                         <td className={styles.role}>
-                          {POSITIONS[p.position - 1]}
+                          {p.role}
                         </td>
                         <td>{p.username}</td>
                         <td className={styles.champion}>{p.champion}</td>
