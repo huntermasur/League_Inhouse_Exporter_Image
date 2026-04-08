@@ -1,5 +1,5 @@
 .page {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -134,11 +134,26 @@
   margin-bottom: 1.5rem;
 }
 
+.detailLayout {
+  display: grid;
+  grid-template-columns: 1fr 44%;
+  gap: 2rem;
+  align-items: center;
+}
+
+.detailContent {
+  min-width: 0;
+}
+
+.detailImageCol {
+  position: sticky;
+  top: 1rem;
+}
+
 .screenshot {
   width: 100%;
   border-radius: 8px;
   border: 1px solid #1e2030;
-  margin-bottom: 1.5rem;
   display: block;
 }
 
@@ -239,7 +254,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   margin-top: 0.25rem;
 }
 

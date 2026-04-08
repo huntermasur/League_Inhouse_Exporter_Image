@@ -114,170 +114,183 @@ export function GameEditPanel({ game, onSave, onDiscard }: Props) {
         Correct any details below then save your changes.
       </p>
 
-      {game.image_filename && (
-        <img
-          src={`/uploads/${game.image_filename}`}
-          alt="Postgame screenshot"
-          className={styles.screenshot}
-        />
-      )}
-
-      <div className={styles.winnerRow}>
-        <label className={styles.label} htmlFor="edit-winning-team">
-          Winning team
-        </label>
-        <select
-          id="edit-winning-team"
-          className={styles.select}
-          value={draft.winning_team}
-          onChange={(e) =>
-            setDraft((prev) => ({
-              ...prev,
-              winning_team: Number(e.target.value) as 1 | 2,
-            }))
-          }
-        >
-          <option value={1}>Team 1</option>
-          <option value={2}>Team 2</option>
-        </select>
-      </div>
-
-      {([1, 2] as const).map((team) => {
-        const players = team === 1 ? team1Players : team2Players;
-        const bans = team === 1 ? team1Bans : team2Bans;
-        const won = (team === 1) === team1Won;
-
-        return (
-          <section key={team} className={styles.teamSection}>
-            <h2
-              className={`${styles.teamHeading} ${won ? styles.win : styles.loss}`}
+      <div className={styles.layout}>
+        <div className={styles.formCol}>
+          <div className={styles.winnerRow}>
+            <label className={styles.label} htmlFor="edit-winning-team">
+              Winning team
+            </label>
+            <select
+              id="edit-winning-team"
+              className={styles.select}
+              value={draft.winning_team}
+              onChange={(e) =>
+                setDraft((prev) => ({
+                  ...prev,
+                  winning_team: Number(e.target.value) as 1 | 2,
+                }))
+              }
             >
-              Team {team} — {won ? "Victory" : "Defeat"}
-            </h2>
+              <option value={1}>Team 1</option>
+              <option value={2}>Team 2</option>
+            </select>
+          </div>
 
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Role</th>
-                  <th>Username</th>
-                  <th>Champion</th>
-                  <th>K</th>
-                  <th>D</th>
-                  <th>A</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((p) => {
-                  const globalIdx = draft.players.indexOf(p);
-                  return (
-                    <tr key={globalIdx}>
-                      <td className={styles.role}>
-                        <select
-                          className={styles.select}
-                          value={p.position}
-                          onChange={(e) =>
-                            updatePlayer(
-                              globalIdx,
-                              "position",
-                              Number(e.target.value) as 1 | 2 | 3 | 4 | 5,
-                            )
-                          }
-                          aria-label={`Role for ${p.username}`}
-                        >
-                          {POSITIONS.map((role, i) => (
-                            <option key={role} value={i + 1}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          className={styles.input}
-                          value={p.username}
-                          onChange={(e) =>
-                            updatePlayer(globalIdx, "username", e.target.value)
-                          }
-                          aria-label={`Username for ${POSITIONS[p.position - 1]}`}
-                        />
-                      </td>
-                      <td>
-                        <ChampionSelect
-                          value={p.champion}
-                          champions={champions}
-                          onChange={(val) =>
-                            updatePlayer(globalIdx, "champion", val)
-                          }
-                          aria-label={`Champion for ${POSITIONS[p.position - 1]}`}
-                        />
-                      </td>
-                      {(["kills", "deaths", "assists"] as const).map((stat) => (
-                        <td key={stat}>
-                          <input
-                            className={`${styles.input} ${styles.numInput}`}
-                            type="number"
-                            min={0}
-                            value={p[stat]}
-                            onChange={(e) =>
-                              updatePlayer(
-                                globalIdx,
-                                stat,
-                                Number(e.target.value),
-                              )
-                            }
-                            aria-label={`${stat} for ${p.username}`}
-                          />
-                        </td>
-                      ))}
+          {([1, 2] as const).map((team) => {
+            const players = team === 1 ? team1Players : team2Players;
+            const bans = team === 1 ? team1Bans : team2Bans;
+            const won = (team === 1) === team1Won;
+
+            return (
+              <section key={team} className={styles.teamSection}>
+                <h2
+                  className={`${styles.teamHeading} ${won ? styles.win : styles.loss}`}
+                >
+                  Team {team} — {won ? "Victory" : "Defeat"}
+                </h2>
+
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Username</th>
+                      <th>Champion</th>
+                      <th>K</th>
+                      <th>D</th>
+                      <th>A</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {players.map((p) => {
+                      const globalIdx = draft.players.indexOf(p);
+                      return (
+                        <tr key={globalIdx}>
+                          <td className={styles.role}>
+                            <select
+                              className={styles.select}
+                              value={p.position}
+                              onChange={(e) =>
+                                updatePlayer(
+                                  globalIdx,
+                                  "position",
+                                  Number(e.target.value) as 1 | 2 | 3 | 4 | 5,
+                                )
+                              }
+                              aria-label={`Role for ${p.username}`}
+                            >
+                              {POSITIONS.map((role, i) => (
+                                <option key={role} value={i + 1}>
+                                  {role}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              className={styles.input}
+                              value={p.username}
+                              onChange={(e) =>
+                                updatePlayer(
+                                  globalIdx,
+                                  "username",
+                                  e.target.value,
+                                )
+                              }
+                              aria-label={`Username for ${POSITIONS[p.position - 1]}`}
+                            />
+                          </td>
+                          <td>
+                            <ChampionSelect
+                              value={p.champion}
+                              champions={champions}
+                              onChange={(val) =>
+                                updatePlayer(globalIdx, "champion", val)
+                              }
+                              aria-label={`Champion for ${POSITIONS[p.position - 1]}`}
+                            />
+                          </td>
+                          {(["kills", "deaths", "assists"] as const).map(
+                            (stat) => (
+                              <td key={stat}>
+                                <input
+                                  className={`${styles.input} ${styles.numInput}`}
+                                  type="number"
+                                  min={0}
+                                  value={p[stat]}
+                                  onChange={(e) =>
+                                    updatePlayer(
+                                      globalIdx,
+                                      stat,
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  aria-label={`${stat} for ${p.username}`}
+                                />
+                              </td>
+                            ),
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
-            {bans.length > 0 && (
-              <div className={styles.bans}>
-                <span className={styles.bansLabel}>Bans:</span>
-                {bans.map((b) => {
-                  const globalIdx = draft.bans.indexOf(b);
-                  return (
-                    <div key={globalIdx} className={styles.banSelectWrap}>
-                      <ChampionSelect
-                        value={b.champion}
-                        champions={champions}
-                        onChange={(val) => updateBan(globalIdx, val)}
-                        aria-label={`Ban ${b.position} for team ${team}`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        );
-      })}
+                {bans.length > 0 && (
+                  <div className={styles.bans}>
+                    <span className={styles.bansLabel}>Bans:</span>
+                    {bans.map((b) => {
+                      const globalIdx = draft.bans.indexOf(b);
+                      return (
+                        <div key={globalIdx} className={styles.banSelectWrap}>
+                          <ChampionSelect
+                            value={b.champion}
+                            champions={champions}
+                            onChange={(val) => updateBan(globalIdx, val)}
+                            allowEmpty
+                            aria-label={`Ban ${b.position} for team ${team}`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
 
-      {error && (
-        <p role="alert" className={styles.errorMsg}>
-          {error}
-        </p>
-      )}
+          {error && (
+            <p role="alert" className={styles.errorMsg}>
+              {error}
+            </p>
+          )}
 
-      <div className={styles.actions}>
-        <button
-          className={styles.cancelBtn}
-          onClick={onDiscard}
-          disabled={saving}
-        >
-          Discard
-        </button>
-        <button
-          className={styles.confirmBtn}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? "Saving…" : "Save Changes"}
-        </button>
+          <div className={styles.actions}>
+            <button
+              className={styles.cancelBtn}
+              onClick={onDiscard}
+              disabled={saving}
+            >
+              Discard
+            </button>
+            <button
+              className={styles.confirmBtn}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? "Saving\u2026" : "Save Changes"}
+            </button>
+          </div>
+        </div>
+
+        {game.image_filename && (
+          <div className={styles.imageCol}>
+            <img
+              src={`/uploads/${game.image_filename}`}
+              alt="Postgame screenshot"
+              className={styles.screenshot}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

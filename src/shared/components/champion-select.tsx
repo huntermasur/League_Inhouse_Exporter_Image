@@ -5,6 +5,7 @@ interface Props {
   value: string;
   champions: string[];
   onChange: (champion: string) => void;
+  allowEmpty?: boolean;
   "aria-label"?: string;
 }
 
@@ -17,6 +18,7 @@ export function ChampionSelect({
   value,
   champions,
   onChange,
+  allowEmpty = false,
   "aria-label": ariaLabel,
 }: Props) {
   const [query, setQuery] = useState(value);
@@ -49,6 +51,30 @@ export function ChampionSelect({
     setActiveIdx(-1);
   }
 
+  function handleBlur() {
+    // If the field is cleared and blank is allowed (e.g. ban slots), commit
+    // an empty string so the parent knows the ban was removed.
+    if (allowEmpty && query.trim() === "") {
+      commit("");
+      return;
+    }
+
+    // Otherwise enforce that the final value is a valid champion from the list.
+    // If the user typed something that doesn't match, revert to the last
+    // committed value so free-text entries are never saved.
+    const match = champions.find(
+      (c) => c.toLowerCase() === query.trim().toLowerCase(),
+    );
+    if (match) {
+      // Normalize to official casing if different from what's committed
+      if (match !== value) commit(match);
+    } else {
+      setQuery(value);
+      setOpen(false);
+      setActiveIdx(-1);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!open) {
       if (e.key === "ArrowDown" || e.key === "Enter") {
@@ -71,6 +97,8 @@ export function ChampionSelect({
         commit(filtered[activeIdx]);
       }
     } else if (e.key === "Escape") {
+      // Revert to last committed value and close
+      setQuery(value);
       setOpen(false);
       setActiveIdx(-1);
     }
@@ -109,14 +137,31 @@ export function ChampionSelect({
           activeIdx >= 0 ? `${listId}-${activeIdx}` : undefined
         }
         aria-label={ariaLabel}
-        className={styles.input}
+        className={`${styles.input} ${allowEmpty && query ? styles.inputWithClear : ""}`}
         value={query}
         onChange={handleInputChange}
         onFocus={() => setOpen(true)}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         autoComplete="off"
         spellCheck={false}
       />
+
+      {allowEmpty && query && (
+        <button
+          className={styles.clearBtn}
+          tabIndex={-1}
+          aria-label="Clear selection"
+          onPointerDown={(e) => {
+            // Prevent the input from losing focus (and triggering blur revert)
+            // before we can commit the cleared value.
+            e.preventDefault();
+            commit("");
+          }}
+        >
+          ×
+        </button>
+      )}
 
       {open && filtered.length > 0 && (
         <ul

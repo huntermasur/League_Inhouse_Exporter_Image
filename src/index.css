@@ -1,4 +1,6 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -17,6 +19,7 @@
 body {
   background: #0d0e17;
   color: #c8c8d4;
+  overflow-x: hidden;
 }
 
 #root {
@@ -32,6 +35,8 @@ button {
   font-family: var(--sans);
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: var(--sans);
 }

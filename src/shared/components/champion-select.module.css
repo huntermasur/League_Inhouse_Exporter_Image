@@ -15,6 +15,10 @@
   transition: border-color 0.15s;
 }
 
+.inputWithClear {
+  padding-right: 1.4rem;
+}
+
 .input:focus {
   outline: none;
   border-color: #c89b3c;
@@ -60,4 +64,24 @@
   border-radius: 3px;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.clearBtn {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #5a6478;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+}
+
+.clearBtn:hover {
+  color: #e0e6f0;
 }

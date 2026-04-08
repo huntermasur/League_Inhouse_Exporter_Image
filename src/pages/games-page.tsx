@@ -164,65 +164,71 @@ export function GamesPage() {
               onDiscard={handleEditDiscard}
             />
           ) : (
-            <>
-              {selected.image_filename && (
-                <img
-                  src={`/uploads/${selected.image_filename}`}
-                  alt="Postgame screenshot"
-                  className={styles.screenshot}
-                />
-              )}
+            <div className={styles.detailLayout}>
+              <div className={styles.detailContent}>
+                {([1, 2] as const).map((team) => {
+                  const players = selected.players.filter(
+                    (p) => p.team === team,
+                  );
+                  const bans = selected.bans.filter((b) => b.team === team);
+                  const won = (team === 1) === team1Won;
 
-              {([1, 2] as const).map((team) => {
-                const players = selected.players.filter((p) => p.team === team);
-                const bans = selected.bans.filter((b) => b.team === team);
-                const won = (team === 1) === team1Won;
-
-                return (
-                  <div key={team} className={styles.teamBlock}>
-                    <h3
-                      className={`${styles.teamLabel} ${won ? styles.win : styles.loss}`}
-                    >
-                      Team {team} — {won ? "Victory" : "Defeat"}
-                    </h3>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Role</th>
-                          <th>Username</th>
-                          <th>Champion</th>
-                          <th>K</th>
-                          <th>D</th>
-                          <th>A</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {players.map((p) => (
-                          <tr key={p.id}>
-                            <td className={styles.role}>{p.role}</td>
-                            <td>{p.username}</td>
-                            <td className={styles.champion}>{p.champion}</td>
-                            <td className={styles.k}>{p.kills}</td>
-                            <td className={styles.d}>{p.deaths}</td>
-                            <td className={styles.a}>{p.assists}</td>
+                  return (
+                    <div key={team} className={styles.teamBlock}>
+                      <h3
+                        className={`${styles.teamLabel} ${won ? styles.win : styles.loss}`}
+                      >
+                        Team {team} — {won ? "Victory" : "Defeat"}
+                      </h3>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Role</th>
+                            <th>Username</th>
+                            <th>Champion</th>
+                            <th>K</th>
+                            <th>D</th>
+                            <th>A</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {bans.length > 0 && (
-                      <div className={styles.bansList}>
-                        <span className={styles.bansLabel}>Bans:</span>
-                        {bans.map((b) => (
-                          <span key={b.id} className={styles.banChip}>
-                            {b.champion}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </>
+                        </thead>
+                        <tbody>
+                          {players.map((p) => (
+                            <tr key={p.id}>
+                              <td className={styles.role}>{p.role}</td>
+                              <td>{p.username}</td>
+                              <td className={styles.champion}>{p.champion}</td>
+                              <td className={styles.k}>{p.kills}</td>
+                              <td className={styles.d}>{p.deaths}</td>
+                              <td className={styles.a}>{p.assists}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {bans.length > 0 && (
+                        <div className={styles.bansList}>
+                          <span className={styles.bansLabel}>Bans:</span>
+                          {bans.map((b) => (
+                            <span key={b.id} className={styles.banChip}>
+                              {b.champion}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selected.image_filename && (
+                <div className={styles.detailImageCol}>
+                  <img
+                    src={`/uploads/${selected.image_filename}`}
+                    alt="Postgame screenshot"
+                    className={styles.screenshot}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </section>
       )}

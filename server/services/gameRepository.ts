@@ -86,6 +86,7 @@ export function insertGame(input: InsertGameInput): void {
     }
 
     for (const b of input.bans) {
+      if (!b.champion.trim()) continue; // skip blank bans
       insertBanStmt.run(input.id, b.team, b.position, b.champion);
     }
   });
@@ -145,6 +146,7 @@ export function updateGame(id: string, input: UpdateGameInput): boolean {
     }
 
     for (const b of input.bans) {
+      if (!b.champion.trim()) continue; // skip blank bans
       insertBanStmt.run(id, b.team, b.position, b.champion);
     }
   });
@@ -228,7 +230,7 @@ export function getChampionBanStats(): ChampionBanStat[] {
       COUNT(*)                                AS ban_count,
       ROUND(100.0 * COUNT(*) / (? * 2), 1)   AS ban_rate
     FROM bans
-    WHERE champion != 'Unknown'
+    WHERE champion != 'Unknown' AND champion != ''
     GROUP BY champion
     ORDER BY champion
   `,

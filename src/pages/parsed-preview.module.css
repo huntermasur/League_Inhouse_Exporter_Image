@@ -1,5 +1,5 @@
 .page {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -20,8 +20,23 @@
   width: 100%;
   border-radius: 8px;
   border: 1px solid #1e2030;
-  margin-bottom: 1.5rem;
   display: block;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 44%;
+  gap: 2rem;
+  align-items: center;
+}
+
+.formCol {
+  min-width: 0;
+}
+
+.imageCol {
+  position: sticky;
+  top: 1rem;
 }
 
 .winnerRow {
@@ -121,9 +136,9 @@
 .bans {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-top: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .bansLabel {
@@ -139,7 +154,8 @@
 }
 
 .banSelectWrap {
-  width: 160px;
+  flex: 1;
+  min-width: 0;
 }
 
 .actions {
